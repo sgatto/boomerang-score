@@ -2,7 +2,23 @@
 name = "boomerang_score"
 version = "0.1.0"
 description = "scoring boomerang tournaments"
-requires-python = ">=3.13"
+authors = [
+    { name = "Klaus Haebe", email = "" },
+    { name = "Andrea SGATTONI", email = "andrea.sgattoi@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "reportlab>=4.4.10",
 ]
+
+# LINKS
+
+[project.urls]
+Homepage = "https://github.com/sgatto/boomerang-score"
+Repository = "https://github.com/sgatto/boomerang-score"
+
+
+[project.scripts]
+boomerang-score = 'boomerang_score.__main__:main'
+
