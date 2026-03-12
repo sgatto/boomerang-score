@@ -3,9 +3,9 @@ import math
 
 def compute_competition_ranks(items):
     """
-    Standard-Wettbewerbsranking (1, 1, 3, 4, 4, 6, ...)
-    items: Liste[(iid, value)], höherer Wert = besser
-    Rückgabe: dict[iid] -> rank
+    Standard competition ranking (1, 1, 3, 4, 4, 6, ...)
+    items: List[(iid, value)], higher value = better
+    Returns: dict[iid] -> rank
     """
     norm = []
     for iid, val in items:
@@ -47,77 +47,77 @@ def safe_div(numer, denom):
         return 0.0
 
 
-def _points_100(_erg):
+def _points_100(result):
     max_score_100 = 100
-    if _erg < 0:
-       _loc_points = -200
-    elif _erg < 100:
-       _loc_points = 500 * math.log10( 1 + 99 * (float(_erg) / max_score_100))
+    if result < 0:
+       points = -200
+    elif result < 100:
+       points = 500 * math.log10( 1 + 99 * (float(result) / max_score_100))
     else:
-       _loc_points = 1000
-    return _loc_points
+       points = 1000
+    return points
 
 
-def _points_80(_erg):
+def _points_80(result):
     max_score_80 = 80
-    if _erg < 0:
-       _loc_points = -200
+    if result < 0:
+       points = -200
     else:
-       _loc_points = 500 * math.log10( 1 + 99 * (float(_erg) / max_score_80))
-    return _loc_points
+       points = 500 * math.log10( 1 + 99 * (float(result) / max_score_80))
+    return points
 
 
-def _points_50(_erg):
+def _points_50(result):
     max_score_50 = 50
-    if _erg < 0:
-       _loc_points = -200
-    elif _erg < max_score_50:
-       _loc_points = 500 * math.log10( 1 + 99 * (float(_erg) / max_score_50))
+    if result < 0:
+       points = -200
+    elif result < max_score_50:
+       points = 500 * math.log10( 1 + 99 * (float(result) / max_score_50))
     else:
-       _loc_points = 1000
-    return _loc_points
+       points = 1000
+    return points
 
 
-def _points_fc(_erg):
+def _points_fc(result):
     _max_time = 60.0
-    if _erg == 0:
-       _loc_points = 0
-    elif _erg == 1:
-       _loc_points = 387.26
-    elif _erg == 2:
-       _loc_points = 518.71
-    elif _erg == 3:
-       _loc_points = 600.01
-    elif _erg == 4:
-       _loc_points = 659.03
-    elif _erg >= 75:
-       _loc_points = 659.03
-    elif _erg >= 5:
-       _loc_points = 500 * math.log10( 1 + 99 * ( 15.00 / float(_erg)))
+    if result == 0:
+       points = 0
+    elif result == 1:
+       points = 387.26
+    elif result == 2:
+       points = 518.71
+    elif result == 3:
+       points = 600.01
+    elif result == 4:
+       points = 659.03
+    elif result >= 75:
+       points = 659.03
+    elif result >= 5:
+       points = 500 * math.log10( 1 + 99 * ( 15.00 / float(result)))
     else:
-       _loc_points = -200
-    return _loc_points
+       points = -200
+    return points
 
 
-def _points_timed(_erg):
+def _points_timed(result):
     _max_time = 60.0
-    if _erg == 0:
-       _loc_points = 0
-    elif _erg == 1:
-       _loc_points = 387.26
-    elif _erg == 2:
-       _loc_points = 518.71
-    elif _erg == 3:
-       _loc_points = 600.01
-    elif _erg == 4:
-       _loc_points = 659.03
-    elif _erg >= 75:
-       _loc_points = 659.03
-    elif _erg > 5:
-       _loc_points = 500 * math.log10( 1 + 99 * ( 15.00 / float(_erg)))
+    if result == 0:
+       points = 0
+    elif result == 1:
+       points = 387.26
+    elif result == 2:
+       points = 518.71
+    elif result == 3:
+       points = 600.01
+    elif result == 4:
+       points = 659.03
+    elif result >= 75:
+       points = 659.03
+    elif result > 5:
+       points = 500 * math.log10( 1 + 99 * ( 15.00 / float(result)))
     else:
-       _loc_points = -200
-    return _loc_points
+       points = -200
+    return points
 
 
 DISCIPLINES = [
