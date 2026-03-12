@@ -34,21 +34,21 @@ from tkinter import ttk, messagebox, filedialog
 # ...
 
 # ==============================
-# Ranking-Hilfsfunktion
+# Ranking Helper Functions
 # ==============================
 
 
 # ==============================
-# Disziplin-Konfiguration
+# Discipline Configuration
 # ==============================
 
 
-# Hilfssets
-BASE_COLUMNS = ["name", "startnummer", "gesamt", "gesamtrang"]
+# Helper sets
+BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
 
 
 # ==============================
-# Haupt-App
+# Main App
 # ==============================
 class ScoreTableApp(tk.Tk):
     """
@@ -167,7 +167,7 @@ class ScoreTableApp(tk.Tk):
             frm_input.grid_columnconfigure(c, weight=0)
         frm_input.grid_columnconfigure(4, weight=1)
 
-        # Tabelle (wird dynamisch aufgebaut)
+        # Table (built dynamically)
         self.frm_table = ttk.Frame(self, padding=(10, 6))
         self.frm_table.pack(fill="both", expand=True)
 
@@ -802,7 +802,7 @@ class ScoreTableApp(tk.Tk):
             except Exception:
                 return None
 
-        title_text = self.ent_title.get().strip() or "Wettbewerb"
+        title_text = self.ent_title.get().strip() or "Competition"
 
         def build_story_for_row(row):
             story = []
@@ -821,13 +821,13 @@ class ScoreTableApp(tk.Tk):
                 story.append(Paragraph(title_text, title_style))
             story.append(Spacer(1, 6))
 
-            # Teilnehmerkopf
-            story.append(Paragraph("Teilnehmer", h2_style))
+            # Participant Header
+            story.append(Paragraph("Participant", h2_style))
             info_tbl = Table([
                 [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
-                [Paragraph("Startnummer:", label_style), Paragraph(self._format_number(row.get("startnummer")), text_style)],
-                [Paragraph("Gesamtpunkte:", label_style), Paragraph(self._format_number(row.get("gesamt")), text_style)],
-                [Paragraph("Gesamtrang:", label_style), Paragraph(self._format_number(row.get("gesamtrang")), text_style)],
+                [Paragraph("Start Number:", label_style), Paragraph(self._format_number(row.get("startnumber")), text_style)],
+                [Paragraph("Total Points:", label_style), Paragraph(self._format_number(row.get("total")), text_style)],
+                [Paragraph("Overall Rank:", label_style), Paragraph(self._format_number(row.get("overall_rank")), text_style)],
             ], colWidths=[40*mm, None])
             info_tbl.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -837,17 +837,17 @@ class ScoreTableApp(tk.Tk):
             story.append(info_tbl)
             story.append(Spacer(1, 10))
 
-            # Kompakte Disziplin-Tabelle (nur aktive)
-            tbl_headers = ["Disziplin", "Ergebnis", "Punkte", "Rang"]
+            # Compact discipline table (only active)
+            tbl_headers = ["Discipline", "Result", "Points", "Rank"]
             tbl_rows = []
             for d in DISCIPLINES:
                 if not self.disc_state[d.code].get():
                     continue
                 tbl_rows.append([
                     d.label,
-                    self._format_number(row.get(f"{d.code}_erg")),
-                    self._format_number(row.get(f"{d.code}_pkt")),
-                    self._format_number(row.get(f"{d.code}_rang")),
+                    self._format_number(row.get(f"{d.code}_res")),
+                    self._format_number(row.get(f"{d.code}_pts")),
+                    self._format_number(row.get(f"{d.code}_rank")),
                 ])
             table_data = [tbl_headers] + tbl_rows
             disc_tbl = Table(table_data, colWidths=[28*mm, 28*mm, 28*mm, 22*mm])
@@ -871,14 +871,14 @@ class ScoreTableApp(tk.Tk):
             story.append(disc_tbl)
             return story
 
-        # Einzel-PDF je Teilnehmer?
+        # Individual PDF per participant?
         if create_separate:
-            out_dir = filedialog.askdirectory(title="Zielordner für einzelne PDFs wählen")
+            out_dir = filedialog.askdirectory(title="Choose target folder for individual PDFs")
             if not out_dir:
                 return
             for iid, row in entries:
-                sn = row.get("startnummer")
-                name_safe = str(row.get("name") or "Teilnehmer").replace("/", "-")
+                sn = row.get("startnumber")
+                name_safe = str(row.get("name") or "Participant").replace("/", "-")
                 basename = f"{sn if sn is not None else ''}_{name_safe}".strip("_") + ".pdf"
                 out_path = os.path.join(out_dir, basename)
 
@@ -887,16 +887,16 @@ class ScoreTableApp(tk.Tk):
                 try:
                     doc.build(story)
                 except Exception as e:
-                    messagebox.showerror("PDF-Fehler", f"Fehler bei '{out_path}':\n{e}")
+                    messagebox.showerror("PDF Error", f"Error at '{out_path}':\n{e}")
                     return
-            messagebox.showinfo("Fertig", f"Es wurden {len(entries)} individuelle PDFs erstellt.\nOrdner: {out_dir}")
+            messagebox.showinfo("Done", f"Created {len(entries)} individual PDFs.\nFolder: {out_dir}")
             return
 
-        # Sammel-PDF
+        # Combined PDF
         out_file = filedialog.asksaveasfilename(
-            title="Gemeinsames PDF speichern",
+            title="Save Combined PDF",
             defaultextension=".pdf",
-            filetypes=[("PDF-Datei", "*.pdf")]
+            filetypes=[("PDF file", "*.pdf")]
         )
         if not out_file:
             return
@@ -910,19 +910,19 @@ class ScoreTableApp(tk.Tk):
         try:
             doc.build(story)
         except Exception as e:
-            messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+            messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
             return
-        messagebox.showinfo("Export erfolgreich", f"Das PDF wurde gespeichert:\n{out_file}")
+        messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{out_file}")
 
     # =========================
-    # Start-/Hilfsfunktionen
+    # Header/Start/Helper Functions
     # =========================
     def _is_active(self, code):
         return bool(self.disc_state[code].get())
 
 
 # ==============================
-# Start
+# Starting Point
 # ==============================
 if __name__ == "__main__":
     app = ScoreTableApp()
