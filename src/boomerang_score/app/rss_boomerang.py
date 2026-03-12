@@ -52,70 +52,70 @@ BASE_COLUMNS = ["name", "startnummer", "gesamt", "gesamtrang"]
 # ==============================
 class ScoreTableApp(tk.Tk):
     """
-    Dynamische Wettbewerbsliste mit Disziplin-Auswahl:
-      - Basis: Name | Startnummer | Gesamtpunkte | Gesamtrang
-      - je aktive Disziplin: ERG_[XX] | PKT_[XX] | RANG_[XX]
+    Dynamic competition list with discipline selection:
+      - Base: Name | Start Number | Total Points | Overall Rank
+      - Per active discipline: RES_[XX] | PTS_[XX] | RANK_[XX]
 
-    - Inline-Edit: Name, Startnummer, und alle aktiven ERG-Werte
-    - Sortierung: per Klick, Toggle, numerisch für Zahlen
-    - CSV-Export: exportiert die aktuell sichtbaren Spalten (displaycolumns)
-    - PDF (Gesamtliste): A4 quer, aktive Disziplinen
-    - PDF (Einzelberichte): A4, kompakte Tabelle je Teilnehmer, Logo rechts
+    - Inline-Edit: Name, Start Number, and all active RES values
+    - Sorting: via click, toggle, numeric for numbers
+    - CSV-Export: exports currently visible columns (displaycolumns)
+    - PDF (Full list): A4 landscape, active disciplines
+    - PDF (Individual reports): A4, compact table per participant, logo on the right
     """
 
     def __init__(self):
         super().__init__()
-        self.title("Wertungstabelle – Dynamische Disziplinen")
+        self.title("Scoring Table – Dynamic Disciplines")
         self.geometry("1450x720")
 
-        # Datenhaltung: Dict[iid] -> Row-Dict (flat)
-        # Felder: "name", "startnummer", "gesamt", "gesamtrang",
-        #         für jede Disziplin: "{code}_erg", "{code}_pkt", "{code}_rang"
+        # Data storage: Dict[iid] -> Row-Dict (flat)
+        # Fields: "name", "startnumber", "total", "overall_rank",
+        #         for each discipline: "{code}_res", "{code}_pts", "{code}_rank"
         self.data = {}
 
-        # Disziplinstatus + Eingabefelder
+        # Discipline status + entry fields
         self.disc_state = {d.code: tk.BooleanVar(value=d.default_active) for d in DISCIPLINES}
-        self.disc_entries = {}  # code -> tk.Entry (Add-Bereich)
+        self.disc_entries = {}  # code -> tk.Entry (Add area)
 
-        # Tree/Spalten
+        # Tree/Columns
         self.tree = None
-        self.all_columns = []        # komplette Spaltenliste (inkl. unsichtbare)
-        self.display_columns = []    # aktuell sichtbare Spalten
+        self.all_columns = []        # complete column list (including invisible)
+        self.display_columns = []    # currently visible columns
         self.column_visibility = {}  # key -> bool
-        self.sort_state = {}         # Spalte -> aufsteigend?
+        self.sort_state = {}         # Column -> ascending?
 
         # Inline-Editor
         self._edit_entry = None
         self._edit_iid_col = None
 
-        # Logo + Titel
+        # Logo + Title
         self.logo_path = None
 
         self._build_ui()
         self._rebuild_dynamic_ui_and_tree()
 
     # =========================
-    # UI-Aufbau
+    # UI Setup
     # =========================
     def _build_ui(self):
-        # Menü
+        # Menu
         menubar = tk.Menu(self)
         self.config(menu=menubar)
         view_menu = tk.Menu(menubar, tearoff=False)
         self.menu_view = view_menu
-        menubar.add_cascade(label="Ansicht", menu=view_menu)
-        view_menu.add_command(label="Spalten verwalten …", command=self._open_columns_dialog)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Manage columns …", command=self._open_columns_dialog)
 
-        # Titel + Logo
+        # Title + Logo
         frm_title = ttk.Frame(self, padding=(10, 6))
         frm_title.pack(fill="x")
 
-        ttk.Label(frm_title, text="Wettbewerbstitel:").grid(row=0, column=0, sticky="w")
+        ttk.Label(frm_title, text="Competition Title:").grid(row=0, column=0, sticky="w")
         self.ent_title = ttk.Entry(frm_title, width=60)
         self.ent_title.grid(row=0, column=1, sticky="w", padx=(6, 12))
-        self.ent_title.insert(0, "Mein Wettbewerb")
+        self.ent_title.insert(0, "My Competition")
 
-        self.lbl_title_display = ttk.Label(frm_title, text="Mein Wettbewerb", font=("Arial", 16, "bold"))
+        self.lbl_title_display = ttk.Label(frm_title, text="My Competition", font=("Arial", 16, "bold"))
         self.lbl_title_display.grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 2))
 
         def update_title(*_):
@@ -123,12 +123,12 @@ class ScoreTableApp(tk.Tk):
         self.ent_title.bind("<KeyRelease>", update_title)
 
         ttk.Label(frm_title, text="Logo:").grid(row=0, column=2, sticky="e")
-        self.lbl_logo_name = ttk.Label(frm_title, text="(kein Logo gewählt)")
+        self.lbl_logo_name = ttk.Label(frm_title, text="(no logo selected)")
         self.lbl_logo_name.grid(row=0, column=3, sticky="w", padx=(6, 6))
-        ttk.Button(frm_title, text="Logo wählen…", command=self.on_choose_logo).grid(row=0, column=4, sticky="w")
+        ttk.Button(frm_title, text="Choose logo…", command=self.on_choose_logo).grid(row=0, column=4, sticky="w")
 
-        # Disziplin-Checkboxen
-        frm_disc = ttk.LabelFrame(self, text="Disziplinen", padding=(10, 8))
+        # Discipline Checkboxes
+        frm_disc = ttk.LabelFrame(self, text="Disciplines", padding=(10, 8))
         frm_disc.pack(fill="x", padx=10, pady=(0, 6))
 
         for idx, d in enumerate(DISCIPLINES):
@@ -136,7 +136,7 @@ class ScoreTableApp(tk.Tk):
                                  command=self._on_toggle_disciplines)
             cb.grid(row=0, column=idx, sticky="w", padx=(0, 12))
 
-        # Eingabe-Bereich (Name, Startnr, dynamische Disziplin-Eingaben + Buttons)
+        # Input Area (Name, Start Number, dynamic discipline entries + buttons)
         frm_input = ttk.Frame(self, padding=(10, 8))
         frm_input.pack(fill="x")
 
@@ -144,15 +144,15 @@ class ScoreTableApp(tk.Tk):
         self.ent_name = ttk.Entry(frm_input, width=20)
         self.ent_name.grid(row=0, column=1, sticky="w", padx=(6, 12))
 
-        ttk.Label(frm_input, text="Startnummer:").grid(row=0, column=2, sticky="w")
+        ttk.Label(frm_input, text="Start Number:").grid(row=0, column=2, sticky="w")
         self.ent_startnr = ttk.Entry(frm_input, width=10)
         self.ent_startnr.grid(row=0, column=3, sticky="w", padx=(6, 12))
 
-        # Container für dynamische Disziplin-Eingaben
+        # Container for dynamic discipline fields
         self.frm_dyn_inputs = ttk.Frame(frm_input)
         self.frm_dyn_inputs.grid(row=0, column=4, sticky="w")
 
-        # Buttons in eigenes Frame verschieben
+        # Move buttons to their own frame
         frm_buttons = ttk.Frame(frm_input)
         frm_buttons.grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
         
@@ -172,12 +172,12 @@ class ScoreTableApp(tk.Tk):
         self.frm_table.pack(fill="both", expand=True)
 
     # =========================
-    # Logo wählen
+    # Choose Logo
     # =========================
     def on_choose_logo(self):
         path = filedialog.askopenfilename(
-            title="Logo-Datei auswählen",
-            filetypes=[("Bilddateien", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("Alle Dateien", "*.*")],
+            title="Select Logo File",
+            filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("All files", "*.*")],
         )
         if not path:
             return
@@ -185,17 +185,17 @@ class ScoreTableApp(tk.Tk):
         self.lbl_logo_name.config(text=os.path.basename(path))
 
     # =========================
-    # Disziplinen toggeln
+    # Toggle Disciplines
     # =========================
     def _on_toggle_disciplines(self):
-        # UI und Tabelle neu aufbauen, Ränge/Total neu berechnen
+        # Rebuild UI and table, recalculate ranks/total
         self._rebuild_dynamic_ui_and_tree()
 
     # =========================
-    # Dynamische UI & Tree aufbauen
+    # Rebuild Dynamic UI & Tree
     # =========================
     def _rebuild_dynamic_ui_and_tree(self):
-        # 1) Dynamische Eingabefelder neu erstellen
+        # 1) Re-create dynamic entry fields
         for w in self.frm_dyn_inputs.winfo_children():
             w.destroy()
         self.disc_entries.clear()
@@ -203,49 +203,49 @@ class ScoreTableApp(tk.Tk):
         col = 0
         for d in DISCIPLINES:
             if self.disc_state[d.code].get():
-                ttk.Label(self.frm_dyn_inputs, text=f"{d.label} (Erg):").grid(row=0, column=col, sticky="w", padx=(0, 4))
+                ttk.Label(self.frm_dyn_inputs, text=f"{d.label} (Res):").grid(row=0, column=col, sticky="w", padx=(0, 4))
                 ent = ttk.Entry(self.frm_dyn_inputs, width=8)
                 ent.grid(row=0, column=col+1, sticky="w", padx=(0, 12))
                 self.disc_entries[d.code] = ent
                 col += 2
 
-        # 2) Tabelle neu aufbauen (Spalten abhängig von aktiven Disziplinen)
-        #    Wir zerstören/re-erstellen Treeview, übernehmen Reihenfolge & Daten.
+        # 2) Rebuild table (columns depend on active disciplines)
+        #    We destroy/re-create Treeview, preserving order & data.
         old_children = []
         if self.tree is not None:
             old_children = list(self.tree.get_children(""))
-            # Reihenfolge merken
+            # Remember order
         for w in self.frm_table.winfo_children():
             w.destroy()
         self._build_tree()
 
-        # 3) vorhandene Daten wieder einfügen
-        #    Reihenfolge bleibt so, wie self.data gespeichert ist (durch Insert)
+        # 3) Re-insert existing data
+        #    Order remains as stored in self.data (via Insert)
         for iid in self.data.keys():
-            # Item in Tree anlegen, dann Werte aktualisieren
+            # Create item in tree, then update values
             new_iid = self.tree.insert("", "end", iid=iid, values=[""] * len(self.all_columns))
             self._update_tree_row(iid)
 
-        # 4) Ränge/Total neu berechnen, da Disziplinen sich geändert haben
+        # 4) Recalculate ranks/total as disciplines have changed
         self._recalc_ranks_and_update()
 
     # =========================
-    # Tree dynamisch erzeugen
+    # Create Tree Dynamically
     # =========================
     def _build_tree(self):
-        # Spalten zusammenstellen
+        # Assemble columns
         self.all_columns = []
         self.column_headers = {}
         self.column_widths = {}
         self.column_anchors = {}
         self.numeric_columns = set()
 
-        # Basis-Spalten
+        # Base Columns
         base_defs = [
             ("name", "Name", 200, "w", False),
-            ("startnummer", "Startnr.", 80, "center", True),
-            ("gesamt", "Gesamtpunkte", 120, "center", True),
-            ("gesamtrang", "Gesamtrang", 100, "center", True),
+            ("startnumber", "Start No.", 80, "center", True),
+            ("total", "Total Points", 120, "center", True),
+            ("overall_rank", "Overall Rank", 100, "center", True),
         ]
         for key, hdr, w, anc, isnum in base_defs:
             self.all_columns.append(key)
@@ -255,36 +255,36 @@ class ScoreTableApp(tk.Tk):
             if isnum:
                 self.numeric_columns.add(key)
 
-        # Disziplin-Spalten (nur aktive)
+        # Discipline Columns (only active)
         for d in DISCIPLINES:
             if not self.disc_state[d.code].get():
                 continue
-            # Ergebnis
-            key_e = f"{d.code}_erg"
+            # Result
+            key_e = f"{d.code}_res"
             self.all_columns.append(key_e)
-            self.column_headers[key_e] = f"{d.label} Erg"
+            self.column_headers[key_e] = f"{d.label} Res"
             self.column_widths[key_e] = 90
             self.column_anchors[key_e] = "center"
             self.numeric_columns.add(key_e)
-            # Punkte
-            key_p = f"{d.code}_pkt"
+            # Points
+            key_p = f"{d.code}_pts"
             self.all_columns.append(key_p)
-            self.column_headers[key_p] = f"{d.label} Pkt"
+            self.column_headers[key_p] = f"{d.label} Pts"
             self.column_widths[key_p] = 90
             self.column_anchors[key_p] = "center"
             self.numeric_columns.add(key_p)
-            # Rang
-            key_r = f"{d.code}_rang"
+            # Rank
+            key_r = f"{d.code}_rank"
             self.all_columns.append(key_r)
-            self.column_headers[key_r] = f"{d.label} Rang"
+            self.column_headers[key_r] = f"{d.label} Rank"
             self.column_widths[key_r] = 80
             self.column_anchors[key_r] = "center"
             self.numeric_columns.add(key_r)
 
-        # Sichtbarkeit initialisieren/erhalten
+        # Initialize/preserve visibility
         new_visibility = {}
         for key in self.all_columns:
-            # bereits bekannte Einstellung übernehmen, sonst default sichtbar
+            # Preserve known setting, otherwise default visible
             new_visibility[key] = self.column_visibility.get(key, True)
         self.column_visibility = new_visibility
         self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
@@ -310,7 +310,7 @@ class ScoreTableApp(tk.Tk):
         self.frm_table.grid_rowconfigure(0, weight=1)
         self.frm_table.grid_columnconfigure(0, weight=1)
 
-        # Spalten konfigurieren
+        # Configure columns
         for col in self.all_columns:
             self.tree.heading(col, text=self.column_headers[col], command=lambda c=col: self.on_sort_column(c))
             self.tree.column(col, width=self.column_widths[col], anchor=self.column_anchors[col], stretch=False)
@@ -322,11 +322,11 @@ class ScoreTableApp(tk.Tk):
         self.bind("<Escape>", self._cancel_inline_edit)
 
     # =========================
-    # Spalten-Dialog (ein/ausblenden)
+    # Column Dialog (show/hide)
     # =========================
     def _open_columns_dialog(self):
         dlg = tk.Toplevel(self)
-        dlg.title("Spalten ein-/ausblenden")
+        dlg.title("Show/Hide Columns")
         dlg.transient(self)
         dlg.grab_set()
         frm = ttk.Frame(dlg, padding=10)
@@ -334,7 +334,7 @@ class ScoreTableApp(tk.Tk):
 
         vars_map = {}
         row = 0
-        ttk.Label(frm, text="Sichtbare Spalten (nur aktuell verfügbare):", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w")
+        ttk.Label(frm, text="Visible Columns (only currently available):", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w")
         row += 1
         for col in self.all_columns:
             v = tk.BooleanVar(value=self.column_visibility.get(col, True))
@@ -345,9 +345,9 @@ class ScoreTableApp(tk.Tk):
 
         btns = ttk.Frame(frm)
         btns.grid(row=row, column=0, pady=(8, 0), sticky="e")
-        ttk.Button(btns, text="Abbrechen", command=dlg.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(side="right", padx=(6, 0))
         def apply_and_close():
-            # Sichtbarkeit anwenden
+            # Apply visibility
             for col, v in vars_map.items():
                 self.column_visibility[col] = bool(v.get())
             self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
@@ -356,7 +356,7 @@ class ScoreTableApp(tk.Tk):
             except Exception:
                 pass
             dlg.destroy()
-        ttk.Button(btns, text="Übernehmen", command=apply_and_close).pack(side="right")
+        ttk.Button(btns, text="Apply", command=apply_and_close).pack(side="right")
 
     # =========================
     # Parser/Formatter
