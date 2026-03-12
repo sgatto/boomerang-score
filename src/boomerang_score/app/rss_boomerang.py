@@ -385,30 +385,30 @@ class ScoreTableApp(tk.Tk):
         return f"{f:.2f}"
 
     def _next_free_startnr(self):
-        used = {int(r.get("startnummer")) for r in self.data.values() if r.get("startnummer") is not None}
+        used = {int(r.get("startnumber")) for r in self.data.values() if r.get("startnumber") is not None}
         n = 1
         while n in used:
             n += 1
         return n
 
     # =========================
-    # Zeile hinzufügen
+    # Add Row
     # =========================
     def on_add_row(self):
         name = self.ent_name.get().strip()
         if not name:
-            messagebox.showwarning("Eingabe fehlt", "Bitte einen Namen eingeben.")
+            messagebox.showwarning("Missing Input", "Please enter a name.")
             return
 
         try:
             startnr = self._parse_int(self.ent_startnr.get())
         except ValueError:
-            messagebox.showwarning("Ungültige Startnummer", "Startnummer muss eine ganze Zahl sein.")
+            messagebox.showwarning("Invalid Start Number", "Start number must be an integer.")
             return
-        if startnr is None or any(row.get("startnummer") == startnr for row in self.data.values()):
+        if startnr is None or any(row.get("startnumber") == startnr for row in self.data.values()):
             startnr = self._next_free_startnr()
 
-        # Werte je aktive Disziplin erfassen
+        # Capture values per active discipline
         disc_values = {}
         for d in DISCIPLINES:
             ent = self.disc_entries.get(d.code)
@@ -418,18 +418,18 @@ class ScoreTableApp(tk.Tk):
                 try:
                     v = self._parse_float(ent.get())
                 except ValueError:
-                    messagebox.showwarning("Ungültige Eingabe", f"{d.label}: Ergebnis muss Zahl sein.")
+                    messagebox.showwarning("Invalid Input", f"{d.label}: Result must be a number.")
                     return
                 disc_values[d.code] = v
 
-        # Neue Zeile anlegen
+        # Create new row
         iid = self.tree.insert("", "end", values=[""] * len(self.all_columns))
-        row = {"name": name, "startnummer": startnr, "gesamt": None, "gesamtrang": None}
-        # Disziplin-Felder initialisieren
+        row = {"name": name, "startnumber": startnr, "total": None, "overall_rank": None}
+        # Initialize discipline fields
         for d in DISCIPLINES:
-            row[f"{d.code}_erg"] = float(disc_values[d.code]) if disc_values[d.code] is not None else 0.0
-            row[f"{d.code}_pkt"] = None
-            row[f"{d.code}_rang"] = None
+            row[f"{d.code}_res"] = float(disc_values[d.code]) if disc_values[d.code] is not None else 0.0
+            row[f"{d.code}_pts"] = None
+            row[f"{d.code}_rank"] = None
 
         self.data[iid] = row
 
@@ -437,28 +437,28 @@ class ScoreTableApp(tk.Tk):
         self._update_tree_row(iid)
         self._recalc_ranks_and_update()
 
-        # Eingaben leeren (Name darf stehen bleiben)
+        # Clear inputs (name may remain)
         self.ent_startnr.delete(0, "end")
         for ent in self.disc_entries.values():
             ent.delete(0, "end")
 
     # =========================
-    # Zeile rechnen/anzeigen
+    # Row Calculation/Display
     # =========================
     def _recalc_row(self, iid):
         row = self.data.get(iid)
         if not row:
             return
-        # Punkte je Disziplin
+        # Points per discipline
         total = 0.0
         for d in DISCIPLINES:
-            erg = row.get(f"{d.code}_erg") or 0.0
-            pkt = d.points_func(erg)
-            row[f"{d.code}_pkt"] = float(pkt)
-            # Summe nur über aktive Disziplinen
+            res = row.get(f"{d.code}_res") or 0.0
+            pts = d.points_func(res)
+            row[f"{d.code}_pts"] = float(pts)
+            # Sum only over active disciplines
             if self.disc_state[d.code].get():
-                total += float(pkt)
-        row["gesamt"] = total
+                total += float(pts)
+        row["total"] = total
 
     def _update_tree_row(self, iid):
         row = self.data[iid]
@@ -466,35 +466,35 @@ class ScoreTableApp(tk.Tk):
         for col in self.all_columns:
             if col in ("name",):
                 values.append(row["name"])
-            elif col in ("startnummer", "gesamt", "gesamtrang"):
+            elif col in ("startnumber", "total", "overall_rank"):
                 values.append(self._format_number(row.get(col)))
-            elif col.endswith("_erg") or col.endswith("_pkt") or col.endswith("_rang"):
+            elif col.endswith("_res") or col.endswith("_pts") or col.endswith("_rank"):
                 values.append(self._format_number(row.get(col)))
             else:
                 values.append("")
         self.tree.item(iid, values=values)
 
     def _recalc_ranks_and_update(self):
-        # Disziplin-Ränge (nur aktive Disziplinen) nach Punkten
+        # Discipline ranks (only active disciplines) by points
         for d in DISCIPLINES:
             if not self.disc_state[d.code].get():
-                # Inaktive Disziplin: Rang leeren
+                # Inactive discipline: clear rank
                 for iid in self.data:
-                    self.data[iid][f"{d.code}_rang"] = None
+                    self.data[iid][f"{d.code}_rank"] = None
                 continue
             if d.code == "fc":
-                items = [(iid, self.data[iid].get(f"{d.code}_pkt")) for iid in self.data]
+                items = [(iid, self.data[iid].get(f"{d.code}_pts")) for iid in self.data]
             else:
-                items = [(iid, self.data[iid].get(f"{d.code}_erg")) for iid in self.data]
+                items = [(iid, self.data[iid].get(f"{d.code}_res")) for iid in self.data]
             ranks = compute_competition_ranks(items)
             for iid in self.data:
-                self.data[iid][f"{d.code}_rang"] = ranks.get(iid)
+                self.data[iid][f"{d.code}_rank"] = ranks.get(iid)
 
-        # Gesamtrang nach Gesamtpunkten
-        items_total = [(iid, self.data[iid].get("gesamt")) for iid in self.data]
+        # Overall rank by total points
+        items_total = [(iid, self.data[iid].get("total")) for iid in self.data]
         ranks_total = compute_competition_ranks(items_total)
         for iid in self.data:
-            self.data[iid]["gesamtrang"] = ranks_total.get(iid)
+            self.data[iid]["overall_rank"] = ranks_total.get(iid)
             self._update_tree_row(iid)
 
     # =========================
@@ -510,12 +510,12 @@ class ScoreTableApp(tk.Tk):
             return
 
         col_index = int(colid.replace("#", "")) - 1
-        col_key = self.tree["displaycolumns"][col_index]  # sichtbare Spalte
-        # Editierbar: name, startnummer, *_erg (der aktiven!)
-        editable = {"name", "startnummer"}
+        col_key = self.tree["displaycolumns"][col_index]  # visible column
+        # Editable: name, startnumber, *_res (of active ones!)
+        editable = {"name", "startnumber"}
         for d in DISCIPLINES:
             if self.disc_state[d.code].get():
-                editable.add(f"{d.code}_erg")
+                editable.add(f"{d.code}_res")
 
         if col_key not in editable:
             return
@@ -545,38 +545,38 @@ class ScoreTableApp(tk.Tk):
         self._edit_entry = None
         self._edit_iid_col = None
 
-        # Validieren & übernehmen
+        # Validate & apply
         if col_key == "name":
             if new_text.strip() == "":
-                messagebox.showwarning("Ungültiger Name", "Der Name darf nicht leer sein.")
+                messagebox.showwarning("Invalid Name", "The name cannot be empty.")
                 return
             self.data[iid]["name"] = new_text.strip()
             self._update_tree_row(iid)
             return
 
-        if col_key == "startnummer":
+        if col_key == "startnumber":
             try:
                 new_sn = int(new_text)
             except ValueError:
-                messagebox.showwarning("Ungültige Startnummer", "Die Startnummer muss eine ganze Zahl sein.")
+                messagebox.showwarning("Invalid Start Number", "The start number must be an integer.")
                 return
             for oid in self.data:
-                if oid != iid and self.data[oid].get("startnummer") == new_sn:
-                    messagebox.showwarning("Doppelte Startnummer", f"Startnummer {new_sn} ist bereits vergeben.")
+                if oid != iid and self.data[oid].get("startnumber") == new_sn:
+                    messagebox.showwarning("Duplicate Start Number", f"Start number {new_sn} is already assigned.")
                     return
-            self.data[iid]["startnummer"] = new_sn
+            self.data[iid]["startnumber"] = new_sn
             self._update_tree_row(iid)
             return
 
-        # Disziplin-Ergebnis?
-        if col_key.endswith("_erg"):
+        # Discipline result?
+        if col_key.endswith("_res"):
             try:
                 new_val = self._parse_float(new_text, allow_empty=False)
             except ValueError:
-                messagebox.showwarning("Ungültige Eingabe", "Bitte eine Zahl eingeben.")
+                messagebox.showwarning("Invalid Input", "Please enter a number.")
                 return
             self.data[iid][col_key] = float(new_val)
-            # Zeile neu berechnen + Ränge aktualisieren
+            # Recalculate row + update ranks
             self._recalc_row(iid)
             self._update_tree_row(iid)
             self._recalc_ranks_and_update()
@@ -589,7 +589,7 @@ class ScoreTableApp(tk.Tk):
         self._edit_iid_col = None
 
     # =========================
-    # Sortierung
+    # Sorting
     # =========================
     def _is_numeric_column(self, key):
         return key in self.numeric_columns
@@ -637,14 +637,14 @@ class ScoreTableApp(tk.Tk):
     # =========================
     def export_csv(self):
         filename = filedialog.asksaveasfilename(
-            title="CSV speichern",
+            title="Save CSV",
             defaultextension=".csv",
-            filetypes=[("CSV-Datei", "*.csv")]
+            filetypes=[("CSV file", "*.csv")]
         )
         if not filename:
             return
 
-        # Sichtbare Spalten in aktueller Reihenfolge exportieren
+        # Export visible columns in current order
         cols = list(self.tree["displaycolumns"])
         headers = [self.column_headers[c] for c in cols]
 
@@ -658,10 +658,10 @@ class ScoreTableApp(tk.Tk):
                     out.append(row[c] if c in ("name",) else self._format_number(row.get(c)))
                 w.writerow(out)
 
-        messagebox.showinfo("Export erfolgreich", f"Die CSV wurde gespeichert:\n{filename}")
+        messagebox.showinfo("Export Successful", f"The CSV has been saved:\n{filename}")
 
     # =========================
-    # Export PDF Gesamtliste
+    # Export PDF Full List
     # =========================
     def export_pdf(self):
         from reportlab.lib import colors
@@ -671,9 +671,9 @@ class ScoreTableApp(tk.Tk):
         from reportlab.lib.styles import getSampleStyleSheet
 
         filename = filedialog.asksaveasfilename(
-            title="PDF speichern",
+            title="Save PDF",
             defaultextension=".pdf",
-            filetypes=[("PDF-Datei", "*.pdf")]
+            filetypes=[("PDF file", "*.pdf")]
         )
         if not filename:
             return
@@ -691,17 +691,17 @@ class ScoreTableApp(tk.Tk):
         styles = getSampleStyleSheet()
         story = []
 
-        title_text = self.ent_title.get().strip() or "Wettbewerb"
+        title_text = self.ent_title.get().strip() or "Competition"
         story.append(Paragraph(title_text, styles["Title"]))
         story.append(Spacer(1, 6))
 
-        # Tabelle: Basis + aktive Disziplinspalten (Erg/Pkt/Rang)
-        headers = ["Name", "Startnr.", "Gesamt", "Gesamtrang"]
-        col_keys = ["name", "startnummer", "gesamt", "gesamtrang"]
+        # Table: Base + active discipline columns (Res/Pts/Rank)
+        headers = ["Name", "Start No.", "Total", "Overall Rank"]
+        col_keys = ["name", "startnumber", "total", "overall_rank"]
         for d in DISCIPLINES:
             if self.disc_state[d.code].get():
-                headers += [f"{d.label} Erg", f"{d.label} Pkt", f"{d.label} Rang"]
-                col_keys += [f"{d.code}_erg", f"{d.code}_pkt", f"{d.code}_rang"]
+                headers += [f"{d.label} Res", f"{d.label} Pts", f"{d.label} Rank"]
+                col_keys += [f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"]
 
         data_rows = []
         for iid in self.tree.get_children():
@@ -716,8 +716,8 @@ class ScoreTableApp(tk.Tk):
 
         table_data = [headers] + data_rows
 
-        # Spaltenbreiten heuristisch
-        # Basis: 60 + 18 + 22 + 24 = 124mm, Rest auf Disziplinen; pro Disziplin ~ (22+22+20)=64mm
+        # Column widths heuristic
+        # Base: 60 + 18 + 22 + 24 = 124mm, rest for disciplines; per discipline ~ (22+22+20)=64mm
         col_widths = []
         base_widths = [45*mm, 11*mm, 11*mm, 11*mm]
         col_widths.extend(base_widths)
@@ -748,13 +748,13 @@ class ScoreTableApp(tk.Tk):
         try:
             doc.build(story)
         except Exception as e:
-            messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+            messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
             return
 
-        messagebox.showinfo("Export erfolgreich", f"Die PDF wurde gespeichert:\n{filename}")
+        messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
 
     # =========================
-    # Export: Individuelle Berichte (A4, kompakte Disziplin-Tabelle, Logo)
+    # Export: Individual Reports (A4, compact discipline table, logo)
     # =========================
     def export_individual_reports(self):
         from reportlab.lib import colors
@@ -764,22 +764,22 @@ class ScoreTableApp(tk.Tk):
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
         if not self.data:
-            messagebox.showwarning("Keine Daten", "Es sind keine Teilnehmer vorhanden.")
+            messagebox.showwarning("No Data", "There are no participants.")
             return
 
-        # Update Ränge auf aktuelle Disziplinwahl
+        # Update ranks for current discipline selection
         self._recalc_ranks_and_update()
 
         create_separate = messagebox.askyesno(
-            "PDF-Option",
-            "Möchtest du einzelne PDF-Dateien pro Teilnehmer erstellen?\n"
-            "Ja = einzelne PDFs\nNein = ein gemeinsames PDF"
+            "PDF Option",
+            "Would you like to create separate PDF files per participant?\n"
+            "Yes = individual PDFs\nNo = one combined PDF"
         )
 
-        # Sortierung: nach Gesamtrang, dann Name
+        # Sorting: by overall rank, then name
         entries = sorted(
             self.data.items(),
-            key=lambda kv: ((kv[1].get("gesamtrang") or 10**9), str(kv[1].get("name") or ""))
+            key=lambda kv: ((kv[1].get("overall_rank") or 10**9), str(kv[1].get("name") or ""))
         )
 
         styles = getSampleStyleSheet()
