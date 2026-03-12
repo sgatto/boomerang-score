@@ -22,3 +22,8 @@ Repository = "https://github.com/sgatto/boomerang-score"
 [project.scripts]
 boomerang-score = 'boomerang_score.__main__:main'
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
