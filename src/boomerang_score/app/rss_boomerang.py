@@ -23,7 +23,7 @@ if sys.platform.startswith("linux"):
     # QT_QPA_PLATFORM can also affect systems with mixed toolkits
     os.environ["QT_QPA_PLATFORM"] = "xcb"
 
-from boomerang_score.core.scorer import compute_competition_ranks, DISCIPLINES
+from boomerang_score.core.scorer import compute_competition_ranks, ACC, AUS, MTA, END, FC, TC, TIMED
 
 import csv
 import tkinter as tk
@@ -928,3 +928,12 @@ if __name__ == "__main__":
     app = ScoreTableApp()
     app.mainloop()
 
+DISCIPLINES = [
+    ACC,
+    AUS,
+    MTA,
+    END,
+    FC,
+    TC,
+    TIMED,
+]

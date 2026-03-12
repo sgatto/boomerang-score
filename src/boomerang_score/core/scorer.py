@@ -120,12 +120,11 @@ def _points_timed(result):
     return points
 
 
-DISCIPLINES = [
-    Discipline("acc", "ACC",   True,  lambda e: _points_100(float(e)) ),
-    Discipline("aus", "AUS",   True,  lambda e: _points_100(float(e)) ),
-    Discipline("mta", "MTA",   True,  lambda e: _points_50(float(e)) ),
-    Discipline("end", "END",   True,  lambda e: _points_80(float(e)) ),
-    Discipline("fc",  "FC",    True,  lambda e: _points_fc(float(e)) ),
-    Discipline("tc",  "TC",    True,  lambda e: _points_100(float(e)) ),
-    Discipline("timed","TIMED",False, lambda e: _points_timed(float(e)) ),
-]
+ACC = Discipline("acc", "ACC", True, lambda e: _points_100(float(e)))
+AUS = Discipline("aus", "AUS", True, lambda e: _points_100(float(e)))
+MTA = Discipline("mta", "MTA", True, lambda e: _points_50(float(e)))
+END = Discipline("end", "END", True, lambda e: _points_80(float(e)))
+FC  = Discipline("fc",  "FC",  True, lambda e: _points_fc(float(e)))
+TC  = Discipline("tc",  "TC",  True, lambda e: _points_100(float(e)))
+TIMED = Discipline("timed", "TIMED", False, lambda e: _points_timed(float(e)))
+
