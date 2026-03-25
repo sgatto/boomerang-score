@@ -16,12 +16,6 @@ if sys.platform.startswith("linux"):
         pass
     # Setting this environment variable helps with X11/XCB sync issues
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
-    # Force X11 backend to avoid Wayland-related XCB issues
-    os.environ["GDK_BACKEND"] = "x11"
-    # Disable Xsynchronize to mitigate some race conditions in XCB
-    os.environ["_X11_NO_XSYNCHRONIZE"] = "1"
-    # QT_QPA_PLATFORM can also affect systems with mixed toolkits
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 from boomerang_score.core.scorer import compute_competition_ranks, ACC, AUS, MTA, END, FC, TC, TIMED
 
@@ -29,24 +23,13 @@ import csv
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
-# Only import reportlab when needed
-# from reportlab.lib import colors
-# ...
-
 # ==============================
-# Ranking Helper Functions
+# Constants
 # ==============================
-
-
-# ==============================
-# Discipline Configuration
-# ==============================
-
-
-# Helper sets
 BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
 EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED"]
 SORTED = ["StartNr", "Rank"]
+
 # ==============================
 # Main App
 # ==============================
@@ -65,6 +48,10 @@ class ScoreTableApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        
+        # Necessary imports for dynamic font detection
+        from tkinter import font
+        
         self.title("Scoring Table – Dynamic Disciplines")
         self.geometry("1450x720")
 
@@ -93,17 +80,52 @@ class ScoreTableApp(tk.Tk):
 
         # Font configuration
         self.style = ttk.Style(self)
-        self.font_main = ("Arial", 11)
-        self.font_bold = ("Arial", 11, "bold")
-        self.font_title = ("Arial", 16, "bold")
-        
-        # Apply global font via style
-        self.style.configure(".", font=self.font_main)
-        self.style.configure("Treeview", font=self.font_main)
-        self.style.configure("Treeview.Heading", font=self.font_bold)
-        
-        # Ensure it also works for standard tk widgets if any
-        self.option_add("*Font", self.font_main)
+
+        # Select best available sans-serif font
+        available_fonts = list(font.families())
+
+        # Preferred fonts in order of preference
+        font_preferences = [
+            "DejaVu Sans",
+            "Liberation Sans",
+            "Noto Sans",
+            "Ubuntu",
+            "Cantarell",
+            "FreeSans",
+            "Nimbus Sans",
+            "Helvetica",
+            "Arial",
+            "bitstream charter",  # Fallback for systems without fontconfig
+        ]
+
+        chosen_family = None
+        for candidate in font_preferences:
+            if candidate in available_fonts:
+                chosen_family = candidate
+                break
+
+        if chosen_family is None:
+            # Use system default as last resort
+            default_font = font.nametofont("TkDefaultFont")
+            chosen_family = default_font.actual("family")
+
+        # Create font objects
+        self.font_main = font.Font(family=chosen_family, size=11)
+        self.font_bold = font.Font(family=chosen_family, size=11, weight="bold")
+        self.font_title = font.Font(family=chosen_family, size=14, weight="bold")
+
+        # Configure ttk styles
+        self.style.configure(".", font=(chosen_family, 11))
+        self.style.configure("TLabel", font=(chosen_family, 11))
+        self.style.configure("TButton", font=(chosen_family, 11))
+        self.style.configure("TEntry", font=(chosen_family, 11))
+        self.style.configure("TCheckbutton", font=(chosen_family, 11))
+        self.style.configure("Treeview", font=(chosen_family, 11), rowheight=26)
+        self.style.configure("Treeview.Heading", font=(chosen_family, 11, "bold"))
+
+        # Apply to all tk (non-ttk) widgets
+        self.option_add("*Font", (chosen_family, 11))
+        self.option_add("*TkDefaultFont", (chosen_family, 11))
 
         self._build_ui()
         self._rebuild_dynamic_ui_and_tree()
@@ -1175,12 +1197,8 @@ class ScoreTableApp(tk.Tk):
 
 
 # ==============================
-# Starting Point
+# Discipline Configuration
 # ==============================
-if __name__ == "__main__":
-    app = ScoreTableApp()
-    app.mainloop()
-
 DISCIPLINES = [
     ACC,
     AUS,
@@ -1190,3 +1208,10 @@ DISCIPLINES = [
     TC,
     TIMED,
 ]
+
+# ==============================
+# Starting Point
+# ==============================
+if __name__ == "__main__":
+    app = ScoreTableApp()
+    app.mainloop()
