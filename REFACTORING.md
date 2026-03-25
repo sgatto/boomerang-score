@@ -81,10 +81,15 @@ src/boomerang_score/
 ✅ **Component Architecture** - GUI split into reusable components:
    - Main app reduced from 877 to 380 lines (57% reduction)
    - TableView, InputPanel, DisciplinePanel, MenuBar components
-✅ **Unit Tests** - 50 tests covering models and services (all passing)
+✅ **Unit Tests** - 47 tests covering models and services (all passing)
 ✅ **Type Hints** - Added to core models, services, and components
 ✅ **CLI Interface** - Command-line tool for programmatic access
-✅ **Adapter Pattern** - Backward compatibility with legacy code
+✅ **Startnumber as ID** - Immutable startnumber replaces arbitrary IDs:
+   - `Competition.participants` is now `dict[int, Participant]`
+   - `service.add_participant(name, startnumber, results) -> Participant`
+   - All methods use `startnumber: int` instead of `participant_id: str`
+   - Removed `update_startnumber()` method (startnumber is immutable)
+   - Cleaner, more intuitive API
 
 ## Next Steps (Phase 2)
 

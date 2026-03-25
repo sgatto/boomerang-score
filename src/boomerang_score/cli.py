@@ -87,9 +87,8 @@ def main() -> int:
             }
 
             startnr = args.startnumber if args.startnumber else competition.next_free_startnumber()
-            participant_id = f"p{startnr}"
 
-            participant = service.add_participant(participant_id, args.name, startnr, disc_results)
+            participant = service.add_participant(args.name, startnr, disc_results)
 
             print(f"Added participant: {participant.name} (Start #{participant.startnumber})")
             points_str = f"{participant.total_points:.2f}" if participant.total_points else "0.00"
@@ -131,8 +130,8 @@ def main() -> int:
             output_path = Path(args.output)
             participant_order = sorted(
                 competition.participants.keys(),
-                key=lambda pid: (competition.get_participant(pid).overall_rank or 999,
-                               competition.get_participant(pid).name)
+                key=lambda startnr: (competition.get_participant(startnr).overall_rank or 999,
+                                   competition.get_participant(startnr).name)
             )
 
             if args.format == "csv":

@@ -208,21 +208,21 @@ class ScoreTableApp(tk.Tk):
         self.table_view.build()
 
         # Re-insert existing data
-        for iid in self.data.keys():
-            self.table_view.tree.insert("", "end", iid=iid, values=[""] * len(self.table_view.all_columns))
-            self.table_view.update_row(iid)
+        for startnr in self.data.keys():
+            self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
+            self.table_view.update_row(str(startnr))
 
     def _on_add_participant(self, name, startnr, disc_values):
         """Handle adding a new participant."""
-        # Insert empty row in tree
-        iid = self.table_view.insert_row([""] * len(self.table_view.all_columns))
-
         try:
-            self.service.add_participant(iid, name, startnr, disc_values)
+            participant = self.service.add_participant(name, startnr, disc_values)
+
+            # Insert row in tree using startnumber as ID
+            iid = str(participant.startnumber)
+            self.table_view.tree.insert("", "end", iid=iid, values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
             return True
         except ValueError as e:
-            self.table_view.delete_row(iid)
             messagebox.showerror("Error", str(e))
             return False
 
