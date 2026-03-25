@@ -114,7 +114,7 @@ def _points_timed(result):
     elif result >= 75:
        points = 659.03
     elif result > 5:
-       points = 500 * math.log10( 1 + 99 * ( 15.00 / float(result)))
+       points = 500 * math.log10( 1 + 99 * safe_div( 15.00 ,result))
     else:
        points = -200
     return points
