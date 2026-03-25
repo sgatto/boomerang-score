@@ -10,7 +10,11 @@ import sys
 import argparse
 import csv
 from pathlib import Path
-from boomerang_score.core import Competition, ACC, AUS, MTA, END, FC, TC, TIMED
+from boomerang_score.core import (
+    Competition, ACC, AUS, MTA, END, FC, TC, TIMED,
+    DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA, DISC_CODE_END,
+    DISC_CODE_FC, DISC_CODE_TC, DISC_CODE_TIMED, ALL_DISCIPLINE_CODES
+)
 from boomerang_score.services import CompetitionService, ExportService
 
 DISCIPLINES = [ACC, AUS, MTA, END, FC, TC, TIMED]
@@ -50,7 +54,7 @@ def create_parser() -> argparse.ArgumentParser:
     # Set active disciplines
     disc_parser = subparsers.add_parser("disciplines", help="Set active disciplines")
     disc_parser.add_argument("codes", nargs="+",
-                            choices=["acc", "aus", "mta", "end", "fc", "tc", "timed"],
+                            choices=ALL_DISCIPLINE_CODES,
                             help="Discipline codes to activate")
 
     return parser
@@ -71,19 +75,19 @@ def main() -> int:
     export_service = ExportService(competition, DISCIPLINES)
 
     # Set default active disciplines
-    service.set_active_disciplines({"acc", "aus", "mta"})
+    service.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA})
 
     try:
         if args.command == "add":
             # Add participant
             disc_results = {
-                "acc": args.acc,
-                "aus": args.aus,
-                "mta": args.mta,
-                "end": args.end,
-                "fc": args.fc,
-                "tc": args.tc,
-                "timed": args.timed,
+                DISC_CODE_ACC: args.acc,
+                DISC_CODE_AUS: args.aus,
+                DISC_CODE_MTA: args.mta,
+                DISC_CODE_END: args.end,
+                DISC_CODE_FC: args.fc,
+                DISC_CODE_TC: args.tc,
+                DISC_CODE_TIMED: args.timed,
             }
 
             startnr = args.startnumber if args.startnumber else competition.next_free_startnumber()

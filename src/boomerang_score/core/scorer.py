@@ -1,4 +1,10 @@
 import math
+from .constants import (
+    DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA, DISC_CODE_END,
+    DISC_CODE_FC, DISC_CODE_TC, DISC_CODE_TIMED,
+    DISC_LABEL_ACC, DISC_LABEL_AUS, DISC_LABEL_MTA, DISC_LABEL_END,
+    DISC_LABEL_FC, DISC_LABEL_TC, DISC_LABEL_TIMED,
+)
 
 
 def compute_competition_ranks(items):
@@ -120,11 +126,11 @@ def _points_timed(result):
     return points
 
 
-ACC = Discipline("acc", "ACC", True, lambda e: _points_100(float(e)))
-AUS = Discipline("aus", "AUS", True, lambda e: _points_100(float(e)))
-MTA = Discipline("mta", "MTA", True, lambda e: _points_50(float(e)))
-END = Discipline("end", "END", True, lambda e: _points_80(float(e)))
-FC  = Discipline("fc",  "FC",  True, lambda e: _points_fc(float(e)))
-TC  = Discipline("tc",  "TC",  True, lambda e: _points_100(float(e)))
-TIMED = Discipline("timed", "TIMED", False, lambda e: _points_timed(float(e)))
+ACC = Discipline(DISC_CODE_ACC, DISC_LABEL_ACC, True, lambda e: _points_100(float(e)))
+AUS = Discipline(DISC_CODE_AUS, DISC_LABEL_AUS, True, lambda e: _points_100(float(e)))
+MTA = Discipline(DISC_CODE_MTA, DISC_LABEL_MTA, True, lambda e: _points_50(float(e)))
+END = Discipline(DISC_CODE_END, DISC_LABEL_END, True, lambda e: _points_80(float(e)))
+FC  = Discipline(DISC_CODE_FC,  DISC_LABEL_FC,  True, lambda e: _points_fc(float(e)))
+TC  = Discipline(DISC_CODE_TC,  DISC_LABEL_TC,  True, lambda e: _points_100(float(e)))
+TIMED = Discipline(DISC_CODE_TIMED, DISC_LABEL_TIMED, False, lambda e: _points_timed(float(e)))
 

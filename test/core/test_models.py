@@ -2,6 +2,7 @@
 
 import pytest
 from boomerang_score.core.models import Participant, Competition, DisciplineResult
+from boomerang_score.core.constants import DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA
 
 
 class TestDisciplineResult:
@@ -60,33 +61,33 @@ class TestParticipant:
 
     def test_set_and_get_result(self):
         p = Participant(name="Test", startnumber=1)
-        p.set_result("acc", 45.5)
-        assert p.get_result("acc") == 45.5
+        p.set_result(DISC_CODE_ACC, 45.5)
+        assert p.get_result(DISC_CODE_ACC) == 45.5
 
     def test_get_result_nonexistent_returns_none(self):
         p = Participant(name="Test", startnumber=1)
-        assert p.get_result("acc") is None
+        assert p.get_result(DISC_CODE_ACC) is None
 
     def test_set_and_get_points(self):
         p = Participant(name="Test", startnumber=1)
-        p.set_points("acc", 88.5)
-        assert p.get_points("acc") == 88.5
+        p.set_points(DISC_CODE_ACC, 88.5)
+        assert p.get_points(DISC_CODE_ACC) == 88.5
 
     def test_set_and_get_rank(self):
         p = Participant(name="Test", startnumber=1)
-        p.set_rank("acc", 3)
-        assert p.get_rank("acc") == 3
+        p.set_rank(DISC_CODE_ACC, 3)
+        assert p.get_rank(DISC_CODE_ACC) == 3
 
     def test_set_result_creates_discipline_entry(self):
         p = Participant(name="Test", startnumber=1)
-        p.set_result("acc", 45.5)
-        assert "acc" in p.disciplines
-        assert p.disciplines["acc"].result == 45.5
+        p.set_result(DISC_CODE_ACC, 45.5)
+        assert DISC_CODE_ACC in p.disciplines
+        assert p.disciplines[DISC_CODE_ACC].result == 45.5
 
     def test_set_none_result(self):
         p = Participant(name="Test", startnumber=1)
-        p.set_result("acc", None)
-        assert p.get_result("acc") is None
+        p.set_result(DISC_CODE_ACC, None)
+        assert p.get_result(DISC_CODE_ACC) is None
 
 
 class TestCompetition:
@@ -144,14 +145,14 @@ class TestCompetition:
 
     def test_set_active_disciplines(self):
         comp = Competition()
-        comp.set_active_disciplines({"acc", "aus", "mta"})
-        assert comp.active_disciplines == {"acc", "aus", "mta"}
+        comp.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA})
+        assert comp.active_disciplines == {DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA}
 
     def test_is_discipline_active(self):
         comp = Competition()
-        comp.set_active_disciplines({"acc", "aus"})
-        assert comp.is_discipline_active("acc") is True
-        assert comp.is_discipline_active("mta") is False
+        comp.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS})
+        assert comp.is_discipline_active(DISC_CODE_ACC) is True
+        assert comp.is_discipline_active(DISC_CODE_MTA) is False
 
     def test_get_all_participants(self):
         comp = Competition()
