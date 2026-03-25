@@ -118,18 +118,21 @@ Currently, data only exists in memory during app runtime. Add persistence:
 ---
 
 ### 2. **Remove Legacy Adapter**
-**Priority: MEDIUM**
+**Priority: HIGH** (Now easier with startnumber as ID!)
 
-The `LegacyDataAdapter` was created for backward compatibility but adds complexity:
+The `LegacyDataAdapter` was created for backward compatibility but adds complexity.
+Now that we use startnumber as ID, it's straightforward to remove:
 
-- [ ] **Refactor components** to work directly with Competition/Participant models
-- [ ] **Remove adapter.py** once all components updated
-- [ ] **Simplify TableView** to use Competition.participants directly
+- [ ] **Update table_view.py** to use `competition.participants[startnr]` directly
+- [ ] **Update rss_boomerang.py** to pass competition instead of adapter
+- [ ] **Remove adapter.py** once all references updated
+- [ ] **Simplify code** - direct dict access is cleaner
 
 **Benefits:**
 - Cleaner codebase
 - Better performance (no adapter overhead)
 - More maintainable
+- One less abstraction layer
 
 ---
 
