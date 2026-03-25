@@ -106,41 +106,41 @@ class TestCompetition:
     def test_add_participant(self):
         comp = Competition()
         p = Participant(name="John", startnumber=1)
-        comp.add_participant("p1", p)
-        assert "p1" in comp.participants
-        assert comp.participants["p1"] == p
+        comp.add_participant(p)
+        assert 1 in comp.participants
+        assert comp.participants[1] == p
 
     def test_add_duplicate_participant_raises_error(self):
         comp = Competition()
         p1 = Participant(name="John", startnumber=1)
-        p2 = Participant(name="Jane", startnumber=2)
-        comp.add_participant("p1", p1)
+        p2 = Participant(name="Jane", startnumber=1)  # Same startnumber
+        comp.add_participant(p1)
 
         with pytest.raises(ValueError, match="already exists"):
-            comp.add_participant("p1", p2)
+            comp.add_participant(p2)
 
     def test_remove_participant(self):
         comp = Competition()
         p = Participant(name="John", startnumber=1)
-        comp.add_participant("p1", p)
-        comp.remove_participant("p1")
-        assert "p1" not in comp.participants
+        comp.add_participant(p)
+        comp.remove_participant(1)
+        assert 1 not in comp.participants
 
     def test_remove_nonexistent_participant_raises_error(self):
         comp = Competition()
         with pytest.raises(ValueError, match="not found"):
-            comp.remove_participant("p1")
+            comp.remove_participant(1)
 
     def test_get_participant(self):
         comp = Competition()
         p = Participant(name="John", startnumber=1)
-        comp.add_participant("p1", p)
-        result = comp.get_participant("p1")
+        comp.add_participant(p)
+        result = comp.get_participant(1)
         assert result == p
 
     def test_get_nonexistent_participant_returns_none(self):
         comp = Competition()
-        assert comp.get_participant("p1") is None
+        assert comp.get_participant(1) is None
 
     def test_set_active_disciplines(self):
         comp = Competition()
@@ -157,8 +157,8 @@ class TestCompetition:
         comp = Competition()
         p1 = Participant(name="John", startnumber=1)
         p2 = Participant(name="Jane", startnumber=2)
-        comp.add_participant("p1", p1)
-        comp.add_participant("p2", p2)
+        comp.add_participant(p1)
+        comp.add_participant(p2)
 
         all_p = comp.get_all_participants()
         assert len(all_p) == 2
@@ -168,41 +168,29 @@ class TestCompetition:
     def test_startnumber_exists(self):
         comp = Competition()
         p1 = Participant(name="John", startnumber=1)
-        comp.add_participant("p1", p1)
+        comp.add_participant(p1)
 
         assert comp.startnumber_exists(1) is True
         assert comp.startnumber_exists(2) is False
-
-    def test_startnumber_exists_with_exclusion(self):
-        comp = Competition()
-        p1 = Participant(name="John", startnumber=1)
-        p2 = Participant(name="Jane", startnumber=2)
-        comp.add_participant("p1", p1)
-        comp.add_participant("p2", p2)
-
-        # Startnumber 1 exists, but we're excluding p1
-        assert comp.startnumber_exists(1, exclude_id="p1") is False
-        # Startnumber 1 exists when not excluding p1
-        assert comp.startnumber_exists(1, exclude_id="p2") is True
 
     def test_next_free_startnumber(self):
         comp = Competition()
         assert comp.next_free_startnumber() == 1
 
         p1 = Participant(name="John", startnumber=1)
-        comp.add_participant("p1", p1)
+        comp.add_participant(p1)
         assert comp.next_free_startnumber() == 2
 
         p2 = Participant(name="Jane", startnumber=2)
-        comp.add_participant("p2", p2)
+        comp.add_participant(p2)
         assert comp.next_free_startnumber() == 3
 
     def test_next_free_startnumber_with_gaps(self):
         comp = Competition()
         p1 = Participant(name="John", startnumber=1)
         p3 = Participant(name="Jane", startnumber=3)
-        comp.add_participant("p1", p1)
-        comp.add_participant("p3", p3)
+        comp.add_participant(p1)
+        comp.add_participant(p3)
 
         # Should return 2 (the gap)
         assert comp.next_free_startnumber() == 2

@@ -79,24 +79,24 @@ class Competition:
     """A competition with participants and active disciplines."""
     title: str = "My Competition"
     logo_path: Optional[str] = None
-    participants: dict[str, Participant] = field(default_factory=dict)
+    participants: dict[int, Participant] = field(default_factory=dict)
     active_disciplines: set[str] = field(default_factory=set)
 
-    def add_participant(self, participant_id: str, participant: Participant):
-        """Add a participant to the competition."""
-        if participant_id in self.participants:
-            raise ValueError(f"Participant with ID {participant_id} already exists")
-        self.participants[participant_id] = participant
+    def add_participant(self, participant: Participant):
+        """Add a participant to the competition (uses startnumber as ID)."""
+        if participant.startnumber in self.participants:
+            raise ValueError(f"Participant with startnumber {participant.startnumber} already exists")
+        self.participants[participant.startnumber] = participant
 
-    def remove_participant(self, participant_id: str):
+    def remove_participant(self, startnumber: int):
         """Remove a participant from the competition."""
-        if participant_id not in self.participants:
-            raise ValueError(f"Participant with ID {participant_id} not found")
-        del self.participants[participant_id]
+        if startnumber not in self.participants:
+            raise ValueError(f"Participant with startnumber {startnumber} not found")
+        del self.participants[startnumber]
 
-    def get_participant(self, participant_id: str) -> Optional[Participant]:
-        """Get a participant by ID."""
-        return self.participants.get(participant_id)
+    def get_participant(self, startnumber: int) -> Optional[Participant]:
+        """Get a participant by startnumber."""
+        return self.participants.get(startnumber)
 
     def set_active_disciplines(self, discipline_codes: set[str]):
         """Set which disciplines are active."""
@@ -110,12 +110,9 @@ class Competition:
         """Get all participants as a list."""
         return list(self.participants.values())
 
-    def startnumber_exists(self, startnumber: int, exclude_id: Optional[str] = None) -> bool:
+    def startnumber_exists(self, startnumber: int) -> bool:
         """Check if a startnumber is already used."""
-        for pid, p in self.participants.items():
-            if pid != exclude_id and p.startnumber == startnumber:
-                return True
-        return False
+        return startnumber in self.participants
 
     def next_free_startnumber(self) -> int:
         """Get the next available startnumber."""
