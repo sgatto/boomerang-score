@@ -17,7 +17,9 @@ if sys.platform.startswith("linux"):
     # Setting this environment variable helps with X11/XCB sync issues
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
 
-from boomerang_score.core.scorer import compute_competition_ranks, ACC, AUS, MTA, END, FC, TC, TIMED
+from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED
+from boomerang_score.services import CompetitionService, ExportService
+from boomerang_score.app.adapter import LegacyDataAdapter
 
 import csv
 import tkinter as tk
@@ -55,14 +57,21 @@ class ScoreTableApp(tk.Tk):
         self.title("Scoring Table – Dynamic Disciplines")
         self.geometry("1450x720")
 
-        # Data storage: Dict[iid] -> Row-Dict (flat)
-        # Fields: "name", "startnumber", "total", "overall_rank",
-        #         for each discipline: "{code}_res", "{code}_pts", "{code}_rank"
-        self.data = {}
+        # Core models and services
+        self.competition = Competition()
+        self.service = CompetitionService(self.competition, DISCIPLINES)
+        self.export_service = ExportService(self.competition, DISCIPLINES)
+
+        # Legacy adapter - allows old code to work with new models
+        self.data = LegacyDataAdapter(self.competition, self.service)
 
         # Discipline status + entry fields
         self.disc_state = {d.code: tk.BooleanVar(value=d.default_active) for d in DISCIPLINES}
         self.disc_entries = {}  # code -> tk.Entry (Add area)
+
+        # Initialize active disciplines
+        active = {d.code for d in DISCIPLINES if d.default_active}
+        self.service.set_active_disciplines(active)
 
         # Tree/Columns
         self.tree = None
@@ -74,9 +83,6 @@ class ScoreTableApp(tk.Tk):
         # Inline-Editor
         self._edit_entry = None
         self._edit_iid_col = None
-
-        # Logo + Title
-        self.logo_path = None
 
         # Font configuration
         self.style = ttk.Style(self)
@@ -149,13 +155,14 @@ class ScoreTableApp(tk.Tk):
         ttk.Label(frm_title, text="Competition Title:").grid(row=0, column=0, sticky="w")
         self.ent_title = ttk.Entry(frm_title, width=60)
         self.ent_title.grid(row=0, column=1, sticky="w", padx=(6, 12))
-        self.ent_title.insert(0, "My Competition")
+        self.ent_title.insert(0, self.competition.title)
 
-        self.lbl_title_display = ttk.Label(frm_title, text="My Competition", font=self.font_title)
+        self.lbl_title_display = ttk.Label(frm_title, text=self.competition.title, font=self.font_title)
         self.lbl_title_display.grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 2))
 
         def update_title(*_):
-            self.lbl_title_display.config(text=self.ent_title.get())
+            self.competition.title = self.ent_title.get()
+            self.lbl_title_display.config(text=self.competition.title)
         self.ent_title.bind("<KeyRelease>", update_title)
 
         ttk.Label(frm_title, text="Logo:").grid(row=0, column=2, sticky="e")
@@ -259,13 +266,17 @@ class ScoreTableApp(tk.Tk):
         )
         if not path:
             return
-        self.logo_path = path
+        self.competition.logo_path = path
         self.lbl_logo_name.config(text=os.path.basename(path))
 
     # =========================
     # Toggle Disciplines
     # =========================
     def _on_toggle_disciplines(self):
+        # Update active disciplines in service
+        active = {d.code for d in DISCIPLINES if self.disc_state[d.code].get()}
+        self.service.set_active_disciplines(active)
+
         # Rebuild UI and table, recalculate ranks/total
         self._rebuild_dynamic_ui_and_tree()
 
@@ -298,14 +309,12 @@ class ScoreTableApp(tk.Tk):
         self._build_tree()
 
         # 3) Re-insert existing data
-        #    Order remains as stored in self.data (via Insert)
         for iid in self.data.keys():
             # Create item in tree, then update values
-            new_iid = self.tree.insert("", "end", iid=iid, values=[""] * len(self.all_columns))
+            self.tree.insert("", "end", iid=iid, values=[""] * len(self.all_columns))
             self._update_tree_row(iid)
 
-        # 4) Recalculate ranks/total as disciplines have changed
-        self._recalc_ranks_and_update()
+        # Rankings are already updated by service.set_active_disciplines()
 
     # =========================
     # Create Tree Dynamically
@@ -477,37 +486,36 @@ class ScoreTableApp(tk.Tk):
         except ValueError:
             messagebox.showwarning("Invalid Start Number", "Start number must be an integer.")
             return
-        if startnr is None or any(row.get("startnumber") == startnr for row in self.data.values()):
-            startnr = self._next_free_startnr()
+        if startnr is None:
+            startnr = self.competition.next_free_startnumber()
 
         # Capture values per active discipline
         disc_values = {}
         for d in DISCIPLINES:
             ent = self.disc_entries.get(d.code)
             if ent is None:
-                disc_values[d.code] = None
+                disc_values[d.code] = 0.0
             else:
                 try:
                     v = self._parse_float(ent.get())
+                    disc_values[d.code] = v if v is not None else 0.0
                 except ValueError:
                     messagebox.showwarning("Invalid Input", f"{d.label}: Result must be a number.")
                     return
-                disc_values[d.code] = v
 
-        # Create new row
+        # Use service to add participant
         iid = self.tree.insert("", "end", values=[""] * len(self.all_columns))
-        row = {"name": name, "startnumber": startnr, "total": None, "overall_rank": None}
-        # Initialize discipline fields
-        for d in DISCIPLINES:
-            row[f"{d.code}_res"] = float(disc_values[d.code]) if disc_values[d.code] is not None else 0.0
-            row[f"{d.code}_pts"] = None
-            row[f"{d.code}_rank"] = None
+        try:
+            self.service.add_participant(iid, name, startnr, disc_values)
+            self._update_tree_row(iid)
 
-        self.data[iid] = row
-
-        self._recalc_row(iid)
-        self._update_tree_row(iid)
-        self._recalc_ranks_and_update()
+            # Update all rows to refresh ranks
+            for pid in self.data.keys():
+                self._update_tree_row(pid)
+        except ValueError as e:
+            self.tree.delete(iid)
+            messagebox.showerror("Error", str(e))
+            return
 
         # Clear inputs (name may remain)
         self.ent_startnr.delete(0, "end")
@@ -515,23 +523,8 @@ class ScoreTableApp(tk.Tk):
             ent.delete(0, "end")
 
     # =========================
-    # Row Calculation/Display
+    # Row Display
     # =========================
-    def _recalc_row(self, iid):
-        row = self.data.get(iid)
-        if not row:
-            return
-        # Points per discipline
-        total = 0.0
-        for d in DISCIPLINES:
-            res = row.get(f"{d.code}_res") or 0.0
-            pts = d.points_func(res)
-            row[f"{d.code}_pts"] = float(pts)
-            # Sum only over active disciplines
-            if self.disc_state[d.code].get():
-                total += float(pts)
-        row["total"] = total
-
     def _update_tree_row(self, iid):
         row = self.data[iid]
         values = []
@@ -545,29 +538,6 @@ class ScoreTableApp(tk.Tk):
             else:
                 values.append("")
         self.tree.item(iid, values=values)
-
-    def _recalc_ranks_and_update(self):
-        # Discipline ranks (only active disciplines) by points
-        for d in DISCIPLINES:
-            if not self.disc_state[d.code].get():
-                # Inactive discipline: clear rank
-                for iid in self.data:
-                    self.data[iid][f"{d.code}_rank"] = None
-                continue
-            if d.code == "fc":
-                items = [(iid, self.data[iid].get(f"{d.code}_pts")) for iid in self.data]
-            else:
-                items = [(iid, self.data[iid].get(f"{d.code}_res")) for iid in self.data]
-            ranks = compute_competition_ranks(items)
-            for iid in self.data:
-                self.data[iid][f"{d.code}_rank"] = ranks.get(iid)
-
-        # Overall rank by total points
-        items_total = [(iid, self.data[iid].get("total")) for iid in self.data]
-        ranks_total = compute_competition_ranks(items_total)
-        for iid in self.data:
-            self.data[iid]["overall_rank"] = ranks_total.get(iid)
-            self._update_tree_row(iid)
 
     # =========================
     # Inline-Editing
@@ -617,41 +587,42 @@ class ScoreTableApp(tk.Tk):
         self._edit_entry = None
         self._edit_iid_col = None
 
-        # Validate & apply
-        if col_key == "name":
-            if new_text.strip() == "":
-                messagebox.showwarning("Invalid Name", "The name cannot be empty.")
-                return
-            self.data[iid]["name"] = new_text.strip()
-            self._update_tree_row(iid)
-            return
-
-        if col_key == "startnumber":
-            try:
-                new_sn = int(new_text)
-            except ValueError:
-                messagebox.showwarning("Invalid Start Number", "The start number must be an integer.")
-                return
-            for oid in self.data:
-                if oid != iid and self.data[oid].get("startnumber") == new_sn:
-                    messagebox.showwarning("Duplicate Start Number", f"Start number {new_sn} is already assigned.")
+        # Validate & apply using service
+        try:
+            if col_key == "name":
+                if new_text.strip() == "":
+                    messagebox.showwarning("Invalid Name", "The name cannot be empty.")
                     return
-            self.data[iid]["startnumber"] = new_sn
-            self._update_tree_row(iid)
-            return
-
-        # Discipline result?
-        if col_key.endswith("_res"):
-            try:
-                new_val = self._parse_float(new_text, allow_empty=False)
-            except ValueError:
-                messagebox.showwarning("Invalid Input", "Please enter a number.")
+                self.service.update_participant_name(iid, new_text.strip())
+                self._update_tree_row(iid)
                 return
-            self.data[iid][col_key] = float(new_val)
-            # Recalculate row + update ranks
-            self._recalc_row(iid)
-            self._update_tree_row(iid)
-            self._recalc_ranks_and_update()
+
+            if col_key == "startnumber":
+                try:
+                    new_sn = int(new_text)
+                except ValueError:
+                    messagebox.showwarning("Invalid Start Number", "The start number must be an integer.")
+                    return
+                self.service.update_participant_startnumber(iid, new_sn)
+                self._update_tree_row(iid)
+                return
+
+            # Discipline result?
+            if col_key.endswith("_res"):
+                try:
+                    new_val = self._parse_float(new_text, allow_empty=False)
+                except ValueError:
+                    messagebox.showwarning("Invalid Input", "Please enter a number.")
+                    return
+                disc_code = col_key[:-4]
+                self.service.update_participant_result(iid, disc_code, float(new_val))
+
+                # Update all rows to refresh ranks
+                for pid in self.data.keys():
+                    self._update_tree_row(pid)
+                return
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
             return
 
     def _cancel_inline_edit(self, event=None):
@@ -716,32 +687,21 @@ class ScoreTableApp(tk.Tk):
         if not filename:
             return
 
-        # Export visible columns in current order
-        cols = list(self.tree["displaycolumns"])
-        headers = [self.column_headers[c] for c in cols]
+        try:
+            # Get visible columns and participant order from GUI
+            cols = list(self.tree["displaycolumns"])
+            participant_order = list(self.tree.get_children())
 
-        with open(filename, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f, delimiter=";")
-            w.writerow(headers)
-            for iid in self.tree.get_children():
-                row = self.data[iid]
-                out = []
-                for c in cols:
-                    out.append(row[c] if c in ("name",) else self._format_number(row.get(c)))
-                w.writerow(out)
-
-        messagebox.showinfo("Export Successful", f"The CSV has been saved:\n{filename}")
+            # Use export service
+            self.export_service.export_csv(filename, cols, self.column_headers, participant_order)
+            messagebox.showinfo("Export Successful", f"The CSV has been saved:\n{filename}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"An error occurred:\n{e}")
 
     # =========================
     # Export PDF Full List
     # =========================
     def export_pdf(self):
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
-
         filename = filedialog.asksaveasfilename(
             title="Save PDF",
             defaultextension=".pdf",
@@ -750,348 +710,47 @@ class ScoreTableApp(tk.Tk):
         if not filename:
             return
 
-        from reportlab.lib.pagesizes import landscape
-        doc = SimpleDocTemplate(
-            filename,
-            pagesize=landscape(A4),
-            leftMargin=15*mm,
-            rightMargin=15*mm,
-            topMargin=15*mm,
-            bottomMargin=15*mm,
-        )
-
-        styles = getSampleStyleSheet()
-        story = []
-
-        title_text = self.ent_title.get().strip() or "Competition"
-        story.append(Paragraph(title_text, styles["Title"]))
-        story.append(Spacer(1, 6))
-
-        # Table: Base + active discipline columns (Res/Pts/Rank)
-        headers = ["Name", "Start No.", "Total", "Overall Rank"]
-        col_keys = ["name", "startnumber", "total", "overall_rank"]
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                headers += [f"{d.label} Res", f"{d.label} Pts", f"{d.label} Rank"]
-                col_keys += [f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"]
-
-        data_rows = []
-        for iid in self.tree.get_children():
-            r = self.data[iid]
-            row_vals = []
-            for k in col_keys:
-                if k == "name":
-                    row_vals.append(str(r["name"]))
-                else:
-                    row_vals.append(self._format_number(r.get(k)))
-            data_rows.append(row_vals)
-
-        table_data = [headers] + data_rows
-
-        # Column widths heuristic
-        # Base: 60 + 18 + 22 + 24 = 124mm, rest for disciplines; per discipline ~ (22+22+20)=64mm
-        col_widths = []
-        base_widths = [45*mm, 11*mm, 11*mm, 11*mm]
-        col_widths.extend(base_widths)
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                col_widths.extend([11*mm, 11*mm, 9*mm])
-
-        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 6),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("ALIGN", (0, 1), (0, -1), "LEFT"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ]))
-        story.append(tbl)
-
         try:
-            doc.build(story)
+            participant_order = list(self.tree.get_children())
+            self.export_service.export_pdf_full_list(filename, participant_order)
+            messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
         except Exception as e:
             messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
-            return
 
-        messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
-
-    # =========================
-    # Export: Individual Reports (A4, compact discipline table, logo)
     # =========================
     def export_individual_reports(self):
-        # --- Bibliotheken prüfen ---
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-            from reportlab.lib import colors
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        except Exception:
-            pdf_available = False
-        else:
-            pdf_available = True
-
-        try:
-            from docx import Document
-            from docx.shared import Inches
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
-            from docx.enum.table import WD_TABLE_ALIGNMENT
-        except Exception:
-            docx_available = False
-        else:
-            docx_available = True
-
-        if not pdf_available and not docx_available:
-            messagebox.showerror(
-                "Fehlende Pakete",
-                "Weder ReportLab (PDF) noch python-docx (Word) sind installiert.\n"
-                "Installiere mindestens eines davon:\n\n"
-                "pip install reportlab\n"
-                "pip install python-docx"
-            )
-            return
-
         if not self.data:
             messagebox.showwarning("No Data", "There are no participants.")
             return
 
-        # Update ranks for current discipline selection
-        self._recalc_ranks_and_update()
-
-        # Sortierung
-        entries = sorted(
-            self.data.items(),
-            key=lambda kv: ((kv[1].get("gesamtrang") or 10 ** 9), str(kv[1].get("name") or ""))
-        )
-
-        # --- Dateidialog: Nutzer entscheidet Format ---
         out_file = filedialog.asksaveasfilename(
-            title="Bericht speichern",
+            title="Save Report",
             defaultextension=".pdf",
             filetypes=[
-                ("PDF-Datei", "*.pdf"),
-                ("Word-Dokument", "*.docx")
+                ("PDF File", "*.pdf"),
+                ("Word Document", "*.docx")
             ]
         )
         if not out_file:
             return
 
-        # --- Format bestimmen ---
-        is_pdf = out_file.lower().endswith(".pdf")
-        is_docx = out_file.lower().endswith(".docx")
+        try:
+            # Sort by overall rank
+            participant_order = sorted(
+                self.data.keys(),
+                key=lambda pid: (self.data[pid].get("overall_rank") or 10**9, self.data[pid].get("name") or "")
+            )
 
-        title_text = self.ent_title.get().strip() or "Wettbewerb"
+            self.export_service.export_individual_reports(
+                out_file,
+                participant_order,
+                self.competition.logo_path
+            )
+            messagebox.showinfo("Export Successful", f"Report saved:\n{out_file}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"An error occurred:\n{e}")
 
-        # ---------------------------------------------------------
-        # 1) WORD EXPORT
-        # ---------------------------------------------------------
-        if is_docx:
-            if not docx_available:
-                messagebox.showerror("Fehler", "python-docx ist nicht installiert.")
-                return
-
-            doc = Document()
-
-            def add_logo(document):
-                if not self.logo_path:
-                    return
-                try:
-                    document.add_picture(self.logo_path, width=Inches(2.0))
-                    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                except Exception:
-                    pass
-
-            for idx, (iid, row) in enumerate(entries):
-                h = doc.add_heading(title_text, level=1)
-                h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-                h2 = doc.add_heading("Overall award", level=2)
-                h2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-                add_logo(doc)
-                doc.add_paragraph("")
-
-                # Teilnehmerkopf
-                table = doc.add_table(rows=0, cols=2)
-                table.alignment = WD_TABLE_ALIGNMENT.CENTER
-
-                def add_info(label, value):
-                    r = table.add_row().cells
-                    r[0].text = label
-                    r[1].text = str(value)
-
-                add_info("Name:", row.get("name") or "")
-                add_info("Gesamtpunkte:", self._format_number(row.get("gesamt")))
-                add_info("Gesamtrang:", self._format_number(row.get("gesamtrang")))
-
-                doc.add_paragraph("")
-
-                # Disziplin-Tabelle
-                disc_table = doc.add_table(rows=1, cols=4)
-                disc_table.style = "Table Grid"
-                hdr = disc_table.rows[0].cells
-                hdr[0].text = "Disziplin"
-                hdr[1].text = "Ergebnis"
-                hdr[2].text = "Punkte"
-                hdr[3].text = "Rang"
-
-                for d in DISCIPLINES:
-                    if not self.disc_state[d.code].get():
-                        continue
-                    row_cells = disc_table.add_row().cells
-                    row_cells[0].text = d.label
-                    row_cells[1].text = self._format_number(row.get(f"{d.code}_erg"))
-                    row_cells[2].text = self._format_number(row.get(f"{d.code}_pkt"))
-                    row_cells[3].text = self._format_number(row.get(f"{d.code}_rang"))
-
-                if idx < len(entries) - 1:
-                    doc.add_page_break()
-
-            try:
-                doc.save(out_file)
-            except Exception as e:
-                messagebox.showerror("Word-Fehler", f"Fehler beim Speichern:\n{e}")
-                return
-
-            messagebox.showinfo("Export erfolgreich", f"Word-Dokument gespeichert:\n{out_file}")
-            return
-
-        # ---------------------------------------------------------
-        # 2) PDF EXPORT (dein bestehender Code)
-        # ---------------------------------------------------------
-        if is_pdf:
-            if not pdf_available:
-                messagebox.showerror("Fehler", "ReportLab ist nicht installiert.")
-                return
-
-            styles = getSampleStyleSheet()
-            title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=20,
-                                         leading=24, spaceAfter=6)
-            h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=14,
-                                      spaceBefore=6, spaceAfter=6, alignment=1)
-            label_style = ParagraphStyle("Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11)
-            text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
-
-            def make_logo():
-                if not self.logo_path:
-                    return None
-                try:
-                    img = Image(self.logo_path)
-                    max_w, max_h = 160 * mm, 160 * mm
-                    iw, ih = img.imageWidth, img.imageHeight
-                    scale = min(max_w / iw, max_h / ih)
-                    img.drawWidth = iw * scale
-                    img.drawHeight = ih * scale
-                    return img
-                except Exception:
-                    return None
-
-            title_text = self.ent_title.get().strip() or "Competition"
-
-            def build_story_for_row(row):
-                story = []
-                logo = make_logo()
-                story.append(Paragraph(title_text, title_style))
-                story.append(Spacer(1, 6))
-                story.append(Paragraph('<para alignment="center">Overall award</para>', h2_style))
-                story.append(Spacer(1, 6))
-
-                if logo:
-                    logo.hAlign = "CENTER"
-                    story.append(logo)
-
-                story.append(Spacer(1, 20))
-
-                # Teilnehmerkopf
-                info_tbl = Table([
-                    [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
-                    # [Paragraph("Startnummer:", label_style), Paragraph(self._format_number(row.get("startnummer")), text_style)],
-                    [Paragraph("Gesamtpunkte:", label_style),
-                     Paragraph(self._format_number(row.get("gesamt")), text_style)],
-                    [Paragraph("Gesamtrang:", label_style),
-                     Paragraph(self._format_number(row.get("gesamtrang")), text_style)]
-                ], colWidths=[40 * mm, None])
-                #    info_tbl.setStyle(TableStyle([
-                #        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                #        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                #        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                #    ]))
-
-                info_tbl.setStyle(TableStyle([
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ]))
-                info_tbl.hAlign = "CENTER"
-
-                story.append(info_tbl)
-                story.append(Spacer(1, 30))
-
-                # Kompakte Disziplin-Tabelle (nur aktive)
-                tbl_headers = ["Disziplin", "Ergebnis", "Punkte", "Rang"]
-                tbl_rows = []
-                for d in DISCIPLINES:
-                    if not self.disc_state[d.code].get():
-                        continue
-                    tbl_rows.append([
-                        d.label,
-                        self._format_number(row.get(f"{d.code}_erg")),
-                        self._format_number(row.get(f"{d.code}_pkt")),
-                        self._format_number(row.get(f"{d.code}_rang")),
-                    ])
-                table_data = [tbl_headers] + tbl_rows
-                disc_tbl = Table(table_data, colWidths=[28 * mm, 28 * mm, 28 * mm, 22 * mm])
-                disc_tbl.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 10),
-                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-                ]))
-                story.append(disc_tbl)
-                return story
-
-            from reportlab.platypus import PageBreak
-            doc = SimpleDocTemplate(out_file, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
-                                    bottomMargin=16 * mm)
-            story = []
-            for idx, (iid, row) in enumerate(entries):
-                story.extend(build_story_for_row(row))
-                if idx < len(entries) - 1:
-                    story.append(PageBreak())
-            try:
-                doc.build(story)
-            except Exception as e:
-                messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
-                return
-
-            messagebox.showinfo("Export erfolgreich", f"PDF gespeichert:\n{out_file}")
-            return
-
-    # =========================
-    # Export PDF Gesamtliste
+    # Export: Individual Reports (A4, compact discipline table, logo)
     # =========================
     def export_scoresheet(self):
         try:
