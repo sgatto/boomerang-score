@@ -91,6 +91,20 @@ class ScoreTableApp(tk.Tk):
         # Logo + Title
         self.logo_path = None
 
+        # Font configuration
+        self.style = ttk.Style(self)
+        self.font_main = ("Arial", 11)
+        self.font_bold = ("Arial", 11, "bold")
+        self.font_title = ("Arial", 16, "bold")
+        
+        # Apply global font via style
+        self.style.configure(".", font=self.font_main)
+        self.style.configure("Treeview", font=self.font_main)
+        self.style.configure("Treeview.Heading", font=self.font_bold)
+        
+        # Ensure it also works for standard tk widgets if any
+        self.option_add("*Font", self.font_main)
+
         self._build_ui()
         self._rebuild_dynamic_ui_and_tree()
 
@@ -115,7 +129,7 @@ class ScoreTableApp(tk.Tk):
         self.ent_title.grid(row=0, column=1, sticky="w", padx=(6, 12))
         self.ent_title.insert(0, "My Competition")
 
-        self.lbl_title_display = ttk.Label(frm_title, text="My Competition", font=("Arial", 16, "bold"))
+        self.lbl_title_display = ttk.Label(frm_title, text="My Competition", font=self.font_title)
         self.lbl_title_display.grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 2))
 
         def update_title(*_):
@@ -370,7 +384,7 @@ class ScoreTableApp(tk.Tk):
 
         vars_map = {}
         row = 0
-        ttk.Label(frm, text="Visible Columns (only currently available):", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w")
+        ttk.Label(frm, text="Visible Columns (only currently available):", font=self.font_bold).grid(row=row, column=0, sticky="w")
         row += 1
         for col in self.all_columns:
             v = tk.BooleanVar(value=self.column_visibility.get(col, True))
