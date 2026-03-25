@@ -45,8 +45,8 @@ from tkinter import ttk, messagebox, filedialog
 
 # Helper sets
 BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
-
-
+EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED"]
+SORTED = ["StartNr", "Rank"]
 # ==============================
 # Main App
 # ==============================
@@ -154,18 +154,60 @@ class ScoreTableApp(tk.Tk):
 
         # Move buttons to their own frame
         frm_buttons = ttk.Frame(frm_input)
-        frm_buttons.grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
-        
+        frm_buttons.grid(row=1, column=0, columnspan=105, sticky="w", pady=(8, 0))
+
         self.btn_add = ttk.Button(frm_buttons, text="Add line", command=self.on_add_row)
         self.btn_add.grid(row=0, column=0, padx=(0, 12))
         
         ttk.Button(frm_buttons, text="save CSV", command=self.export_csv).grid(row=0, column=1, padx=(0, 12))
         ttk.Button(frm_buttons, text="save PDF", command=self.export_pdf).grid(row=0, column=2, padx=(0, 12))
-        ttk.Button(frm_buttons, text="Overall awards (PDF)", command=self.export_individual_reports).grid(row=0, column=3, padx=(0, 12))
+        ttk.Button(frm_buttons, text="Overall awards (PDF/DOCX)", command=self.export_individual_reports).grid(row=0, column=3, padx=(0, 12))
 
-        for c in range(5):
+        # Scorsheet options in seperate frame
+        frm_scoresheet = ttk.LabelFrame(self, text="Scoresheet", padding=(10, 8))
+        frm_scoresheet.pack(fill="x", padx=10, pady=(0, 6))
+        # frm_scoresheet.grid(row=2, column=0, columnspan=105, sticky="w", pady=(8, 0))
+
+        ttk.Label(frm_scoresheet, text="Number of circles:").grid(row=0, column=2, sticky="w")
+        self.ent_circle = ttk.Entry(frm_scoresheet, width=10)
+        self.ent_circle.grid(row=0, column=3, sticky="w", padx=(6, 12))
+        self.ent_circle.insert(0, "2")
+
+        # Dropdown für Event
+        ttk.Label(frm_scoresheet, text="Event:").grid(row=0, column=4, sticky="w", padx=(20, 6))
+
+        self.event_var = tk.StringVar()
+        self.event_var.set(EVENTS[0])  # Standardwert = erstes Element ("ACC")
+
+        self.event_dropdown = ttk.OptionMenu(
+            frm_scoresheet,
+            self.event_var,
+            self.event_var.get(),
+            *EVENTS
+        )
+        self.event_dropdown.grid(row=0, column=5, sticky="w")
+        # scoresheet_event = self.event_var.get()
+
+        # Dropdown für Sortierung
+        ttk.Label(frm_scoresheet, text="Sorted by").grid(row=0, column=6, sticky="w", padx=(20, 6))
+
+        self.sheetsort_var = tk.StringVar()
+        self.sheetsort_var.set(SORTED[0])  # Standardwert = erstes Element ("ACC")
+
+        self.event_dropdown = ttk.OptionMenu(
+            frm_scoresheet,
+            self.sheetsort_var,
+            self.sheetsort_var.get(),
+            *SORTED
+        )
+        self.event_dropdown.grid(row=0, column=7, sticky="w")
+        self.btn_add = ttk.Button(frm_scoresheet, text="print scoresheets", command=self.export_scoresheet)
+        self.btn_add.grid(row=0, column=8, padx=(0, 12))
+
+
+        for c in range(103):
             frm_input.grid_columnconfigure(c, weight=0)
-        frm_input.grid_columnconfigure(4, weight=1)
+        frm_input.grid_columnconfigure(103, weight=1)
 
         # Table (built dynamically)
         self.frm_table = ttk.Frame(self, padding=(10, 6))
@@ -300,17 +342,11 @@ class ScoreTableApp(tk.Tk):
         )
         yscroll = ttk.Scrollbar(self.frm_table, orient="vertical", command=self.tree.yview)
         xscroll = ttk.Scrollbar(self.frm_table, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscroll=yscroll.set, xscroll=xscroll.set)
+        self.tree.configure(xscroll=xscroll.set)
+        self.tree.pack(side="bottom", fill="both", expand=True)
+        xscroll.pack(side="bottom", fill="x")
 
-        # Layout using grid to be more robust
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        yscroll.grid(row=0, column=1, sticky="ns")
-        xscroll.grid(row=1, column=0, sticky="ew")
-
-        self.frm_table.grid_rowconfigure(0, weight=1)
-        self.frm_table.grid_columnconfigure(0, weight=1)
-
-        # Configure columns
+        # Spalten konfigurieren
         for col in self.all_columns:
             self.tree.heading(col, text=self.column_headers[col], command=lambda c=col: self.on_sort_column(c))
             self.tree.column(col, width=self.column_widths[col], anchor=self.column_anchors[col], stretch=False)
@@ -757,11 +793,37 @@ class ScoreTableApp(tk.Tk):
     # Export: Individual Reports (A4, compact discipline table, logo)
     # =========================
     def export_individual_reports(self):
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        # --- Bibliotheken prüfen ---
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        except Exception:
+            pdf_available = False
+        else:
+            pdf_available = True
+
+        try:
+            from docx import Document
+            from docx.shared import Inches
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            from docx.enum.table import WD_TABLE_ALIGNMENT
+        except Exception:
+            docx_available = False
+        else:
+            docx_available = True
+
+        if not pdf_available and not docx_available:
+            messagebox.showerror(
+                "Fehlende Pakete",
+                "Weder ReportLab (PDF) noch python-docx (Word) sind installiert.\n"
+                "Installiere mindestens eines davon:\n\n"
+                "pip install reportlab\n"
+                "pip install python-docx"
+            )
+            return
 
         if not self.data:
             messagebox.showwarning("No Data", "There are no participants.")
@@ -770,143 +832,320 @@ class ScoreTableApp(tk.Tk):
         # Update ranks for current discipline selection
         self._recalc_ranks_and_update()
 
-        create_separate = messagebox.askyesno(
-            "PDF Option",
-            "Would you like to create separate PDF files per participant?\n"
-            "Yes = individual PDFs\nNo = one combined PDF"
-        )
-
-        # Sorting: by overall rank, then name
+        # Sortierung
         entries = sorted(
             self.data.items(),
-            key=lambda kv: ((kv[1].get("overall_rank") or 10**9), str(kv[1].get("name") or ""))
+            key=lambda kv: ((kv[1].get("gesamtrang") or 10 ** 9), str(kv[1].get("name") or ""))
         )
 
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=20, leading=24, spaceAfter=6)
-        h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=14, spaceBefore=6, spaceAfter=6)
-        label_style = ParagraphStyle("Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11)
-        text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
-
-        def make_logo():
-            if not self.logo_path:
-                return None
-            try:
-                img = Image(self.logo_path)
-                max_w, max_h = 35*mm, 35*mm
-                iw, ih = img.drawWidth, img.drawHeight
-                scale = min(max_w/iw, max_h/ih)
-                img.drawWidth = iw * scale
-                img.drawHeight = ih * scale
-                return img
-            except Exception:
-                return None
-
-        title_text = self.ent_title.get().strip() or "Competition"
-
-        def build_story_for_row(row):
-            story = []
-            logo = make_logo()
-            if logo:
-                head_tbl = Table([[Paragraph(title_text, title_style), logo]], colWidths=[None, 40*mm])
-                head_tbl.setStyle(TableStyle([
-                    ("ALIGN", (0, 0), (0, 0), "LEFT"),
-                    ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ]))
-                story.append(head_tbl)
-            else:
-                story.append(Paragraph(title_text, title_style))
-            story.append(Spacer(1, 6))
-
-            # Participant Header
-            story.append(Paragraph("Participant", h2_style))
-            info_tbl = Table([
-                [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
-                [Paragraph("Start Number:", label_style), Paragraph(self._format_number(row.get("startnumber")), text_style)],
-                [Paragraph("Total Points:", label_style), Paragraph(self._format_number(row.get("total")), text_style)],
-                [Paragraph("Overall Rank:", label_style), Paragraph(self._format_number(row.get("overall_rank")), text_style)],
-            ], colWidths=[40*mm, None])
-            info_tbl.setStyle(TableStyle([
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ]))
-            story.append(info_tbl)
-            story.append(Spacer(1, 10))
-
-            # Compact discipline table (only active)
-            tbl_headers = ["Discipline", "Result", "Points", "Rank"]
-            tbl_rows = []
-            for d in DISCIPLINES:
-                if not self.disc_state[d.code].get():
-                    continue
-                tbl_rows.append([
-                    d.label,
-                    self._format_number(row.get(f"{d.code}_res")),
-                    self._format_number(row.get(f"{d.code}_pts")),
-                    self._format_number(row.get(f"{d.code}_rank")),
-                ])
-            table_data = [tbl_headers] + tbl_rows
-            disc_tbl = Table(table_data, colWidths=[28*mm, 28*mm, 28*mm, 22*mm])
-            disc_tbl.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 10),
-                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-            ]))
-            story.append(disc_tbl)
-            return story
-
-        # Individual PDF per participant?
-        if create_separate:
-            out_dir = filedialog.askdirectory(title="Choose target folder for individual PDFs")
-            if not out_dir:
-                return
-            for iid, row in entries:
-                sn = row.get("startnumber")
-                name_safe = str(row.get("name") or "Participant").replace("/", "-")
-                basename = f"{sn if sn is not None else ''}_{name_safe}".strip("_") + ".pdf"
-                out_path = os.path.join(out_dir, basename)
-
-                doc = SimpleDocTemplate(out_path, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=16*mm)
-                story = build_story_for_row(row)
-                try:
-                    doc.build(story)
-                except Exception as e:
-                    messagebox.showerror("PDF Error", f"Error at '{out_path}':\n{e}")
-                    return
-            messagebox.showinfo("Done", f"Created {len(entries)} individual PDFs.\nFolder: {out_dir}")
-            return
-
-        # Combined PDF
+        # --- Dateidialog: Nutzer entscheidet Format ---
         out_file = filedialog.asksaveasfilename(
-            title="Save Combined PDF",
+            title="Bericht speichern",
             defaultextension=".pdf",
-            filetypes=[("PDF file", "*.pdf")]
+            filetypes=[
+                ("PDF-Datei", "*.pdf"),
+                ("Word-Dokument", "*.docx")
+            ]
         )
         if not out_file:
             return
 
-        doc = SimpleDocTemplate(out_file, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=16*mm)
+        # --- Format bestimmen ---
+        is_pdf = out_file.lower().endswith(".pdf")
+        is_docx = out_file.lower().endswith(".docx")
+
+        title_text = self.ent_title.get().strip() or "Wettbewerb"
+
+        # ---------------------------------------------------------
+        # 1) WORD EXPORT
+        # ---------------------------------------------------------
+        if is_docx:
+            if not docx_available:
+                messagebox.showerror("Fehler", "python-docx ist nicht installiert.")
+                return
+
+            doc = Document()
+
+            def add_logo(document):
+                if not self.logo_path:
+                    return
+                try:
+                    document.add_picture(self.logo_path, width=Inches(2.0))
+                    document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception:
+                    pass
+
+            for idx, (iid, row) in enumerate(entries):
+                h = doc.add_heading(title_text, level=1)
+                h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                h2 = doc.add_heading("Overall award", level=2)
+                h2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                add_logo(doc)
+                doc.add_paragraph("")
+
+                # Teilnehmerkopf
+                table = doc.add_table(rows=0, cols=2)
+                table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+                def add_info(label, value):
+                    r = table.add_row().cells
+                    r[0].text = label
+                    r[1].text = str(value)
+
+                add_info("Name:", row.get("name") or "")
+                add_info("Gesamtpunkte:", self._format_number(row.get("gesamt")))
+                add_info("Gesamtrang:", self._format_number(row.get("gesamtrang")))
+
+                doc.add_paragraph("")
+
+                # Disziplin-Tabelle
+                disc_table = doc.add_table(rows=1, cols=4)
+                disc_table.style = "Table Grid"
+                hdr = disc_table.rows[0].cells
+                hdr[0].text = "Disziplin"
+                hdr[1].text = "Ergebnis"
+                hdr[2].text = "Punkte"
+                hdr[3].text = "Rang"
+
+                for d in DISCIPLINES:
+                    if not self.disc_state[d.code].get():
+                        continue
+                    row_cells = disc_table.add_row().cells
+                    row_cells[0].text = d.label
+                    row_cells[1].text = self._format_number(row.get(f"{d.code}_erg"))
+                    row_cells[2].text = self._format_number(row.get(f"{d.code}_pkt"))
+                    row_cells[3].text = self._format_number(row.get(f"{d.code}_rang"))
+
+                if idx < len(entries) - 1:
+                    doc.add_page_break()
+
+            try:
+                doc.save(out_file)
+            except Exception as e:
+                messagebox.showerror("Word-Fehler", f"Fehler beim Speichern:\n{e}")
+                return
+
+            messagebox.showinfo("Export erfolgreich", f"Word-Dokument gespeichert:\n{out_file}")
+            return
+
+        # ---------------------------------------------------------
+        # 2) PDF EXPORT (dein bestehender Code)
+        # ---------------------------------------------------------
+        if is_pdf:
+            if not pdf_available:
+                messagebox.showerror("Fehler", "ReportLab ist nicht installiert.")
+                return
+
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=20,
+                                         leading=24, spaceAfter=6)
+            h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=14,
+                                      spaceBefore=6, spaceAfter=6, alignment=1)
+            label_style = ParagraphStyle("Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11)
+            text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
+
+            def make_logo():
+                if not self.logo_path:
+                    return None
+                try:
+                    img = Image(self.logo_path)
+                    max_w, max_h = 160 * mm, 160 * mm
+                    iw, ih = img.imageWidth, img.imageHeight
+                    scale = min(max_w / iw, max_h / ih)
+                    img.drawWidth = iw * scale
+                    img.drawHeight = ih * scale
+                    return img
+                except Exception:
+                    return None
+
+        title_text = self.ent_title.get().strip() or "Competition"
+
+            def build_story_for_row(row):
+                story = []
+                logo = make_logo()
+                story.append(Paragraph(title_text, title_style))
+                story.append(Spacer(1, 6))
+                story.append(Paragraph('<para alignment="center">Overall award</para>', h2_style))
+                story.append(Spacer(1, 6))
+
+                if logo:
+                    logo.hAlign = "CENTER"
+                    story.append(logo)
+
+                story.append(Spacer(1, 20))
+
+                # Teilnehmerkopf
+                info_tbl = Table([
+                    [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
+                    # [Paragraph("Startnummer:", label_style), Paragraph(self._format_number(row.get("startnummer")), text_style)],
+                    [Paragraph("Gesamtpunkte:", label_style),
+                     Paragraph(self._format_number(row.get("gesamt")), text_style)],
+                    [Paragraph("Gesamtrang:", label_style),
+                     Paragraph(self._format_number(row.get("gesamtrang")), text_style)]
+                ], colWidths=[40 * mm, None])
+                #    info_tbl.setStyle(TableStyle([
+                #        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                #        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                #        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                #    ]))
+
+                info_tbl.setStyle(TableStyle([
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ]))
+                info_tbl.hAlign = "CENTER"
+
+                story.append(info_tbl)
+                story.append(Spacer(1, 30))
+
+                # Kompakte Disziplin-Tabelle (nur aktive)
+                tbl_headers = ["Disziplin", "Ergebnis", "Punkte", "Rang"]
+                tbl_rows = []
+                for d in DISCIPLINES:
+                    if not self.disc_state[d.code].get():
+                        continue
+                    tbl_rows.append([
+                        d.label,
+                        self._format_number(row.get(f"{d.code}_erg")),
+                        self._format_number(row.get(f"{d.code}_pkt")),
+                        self._format_number(row.get(f"{d.code}_rang")),
+                    ])
+                table_data = [tbl_headers] + tbl_rows
+                disc_tbl = Table(table_data, colWidths=[28 * mm, 28 * mm, 28 * mm, 22 * mm])
+                disc_tbl.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 10),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+                ]))
+                story.append(disc_tbl)
+                return story
+
+            from reportlab.platypus import PageBreak
+            doc = SimpleDocTemplate(out_file, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm,
+                                    bottomMargin=16 * mm)
+            story = []
+            for idx, (iid, row) in enumerate(entries):
+                story.extend(build_story_for_row(row))
+                if idx < len(entries) - 1:
+                    story.append(PageBreak())
+            try:
+                doc.build(story)
+            except Exception as e:
+                messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+                return
+
+            messagebox.showinfo("Export erfolgreich", f"PDF gespeichert:\n{out_file}")
+            return
+
+    # =========================
+    # Export PDF Gesamtliste
+    # =========================
+    def export_scoresheet(self):
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+        except Exception:
+            messagebox.showerror(
+                "ReportLab fehlt",
+                "Für den PDF-Export wird das Paket 'reportlab' benötigt.\n"
+                "Installiere es mit:\n\n    pip install reportlab"
+            )
+            return
+
+        filename = filedialog.asksaveasfilename(
+            title="PDF speichern",
+            defaultextension=".pdf",
+            filetypes=[("PDF-Datei", "*.pdf")]
+        )
+        if not filename:
+            return
+
+        doc = SimpleDocTemplate(
+            filename,
+            pagesize=landscape(A4),
+            leftMargin=15 * mm,
+            rightMargin=15 * mm,
+            topMargin=15 * mm,
+            bottomMargin=15 * mm,
+        )
+
+        styles = getSampleStyleSheet()
         story = []
-        for idx, (iid, row) in enumerate(entries):
-            story.extend(build_story_for_row(row))
-            if idx < len(entries) - 1:
-                story.append(PageBreak())
+
+        title_text = self.ent_title.get().strip() or "Wettbewerb"
+        story.append(Paragraph(title_text, styles["Title"]))
+        story.append(Spacer(1, 6))
+
+        # Tabelle: Basis + aktive Disziplinspalten (Erg/Pkt/Rang)
+        headers = headers = ["startnr", "Name", "Wurf 1", "Wurf 2", "Wurf 3", "Wurf 4", "Wurf 5", "Gesamt"]
+        col_keys = ["startnummer", "name", "gesamt", "gesamtrang"]
+        for d in DISCIPLINES:
+            if self.disc_state[d.code].get():
+                headers += [f"{d.label} Erg", f"{d.label} Pkt", f"{d.label} Rang"]
+                col_keys += [f"{d.code}_erg", f"{d.code}_pkt", f"{d.code}_rang"]
+
+        data_rows = []
+        for iid in self.tree.get_children():
+            r = self.data[iid]
+            row_vals = []
+            for k in col_keys:
+                if k == "name":
+                    row_vals.append(str(r["name"]))
+                else:
+                    row_vals.append(self._format_number(r.get(k)))
+            data_rows.append(row_vals)
+
+        table_data = [headers] + data_rows
+
+        # Spaltenbreiten heuristisch
+        # Basis: 60 + 18 + 22 + 24 = 124mm, Rest auf Disziplinen; pro Disziplin ~ (22+22+20)=64mm
+        col_widths = []
+        base_widths = [45 * mm, 11 * mm, 11 * mm, 11 * mm]
+        col_widths.extend(base_widths)
+        for d in DISCIPLINES:
+            if self.disc_state[d.code].get():
+                col_widths.extend([11 * mm, 11 * mm, 9 * mm])
+
+        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+
+            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 1), (-1, -1), 6),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("ALIGN", (0, 1), (0, -1), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+        ]))
+        story.append(tbl)
+
         try:
             doc.build(story)
         except Exception as e:
