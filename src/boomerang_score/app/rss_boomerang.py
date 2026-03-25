@@ -960,7 +960,7 @@ class ScoreTableApp(tk.Tk):
                 except Exception:
                     return None
 
-        title_text = self.ent_title.get().strip() or "Competition"
+            title_text = self.ent_title.get().strip() or "Competition"
 
             def build_story_for_row(row):
                 story = []
@@ -1151,7 +1151,7 @@ class ScoreTableApp(tk.Tk):
         except Exception as e:
             messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
             return
-        messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{out_file}")
+        messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
 
     # =========================
     # Header/Start/Helper Functions
