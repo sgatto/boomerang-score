@@ -1,0 +1,68 @@
+name: Build Executables
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+
+      - name: Install dependencies and PyInstaller
+        run: |
+          uv sync --dev
+          uv pip install pyinstaller
+
+      - name: Build Windows executable
+        run: |
+          uv run pyinstaller --onefile --windowed --name boomerang-score src/boomerang_score/__main__.py
+
+      - name: Upload Windows executable to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/boomerang-score.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+
+      - name: Install dependencies and PyInstaller
+        run: |
+          uv sync --dev
+          uv pip install pyinstaller
+
+      - name: Build macOS app
+        run: |
+          uv run pyinstaller --onefile --windowed --name boomerang-score src/boomerang_score/__main__.py
+
+      - name: Create macOS DMG
+        run: |
+          mkdir -p dmg
+          cp -r dist/boomerang-score.app dmg/
+          hdiutil create -volname "boomerang-score" -srcfolder dmg -ov -format UDZO boomerang-score.dmg
+
+      - name: Upload macOS DMG to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: boomerang-score.dmg
