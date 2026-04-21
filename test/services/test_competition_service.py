@@ -190,3 +190,36 @@ class TestRecalculation:
         # P1 now has worse score (40 < 45), so p2 should have better rank
         p2 = competition.get_participant(2)
         assert p2.get_rank(DISC_CODE_ACC) < p1.get_rank(DISC_CODE_ACC)
+
+
+class TestDeleteParticipant:
+    """Tests for deleting participants."""
+
+    def test_delete_participant(self, service, competition):
+        service.add_participant("John Doe", 1, {})
+        assert len(competition.participants) == 1
+
+        service.delete_participant(1)
+        assert len(competition.participants) == 0
+
+    def test_delete_participant_recalculates_ranks(self, service, competition):
+        service.add_participant("First", 1, {DISC_CODE_ACC: 100.0})
+        service.add_participant("Second", 2, {DISC_CODE_ACC: 50.0})
+        service.add_participant("Third", 3, {DISC_CODE_ACC: 25.0})
+
+        p2 = competition.get_participant(2)
+        p3 = competition.get_participant(3)
+
+        assert p2.get_rank(DISC_CODE_ACC) == 2
+        assert p3.get_rank(DISC_CODE_ACC) == 3
+
+        # Delete the first one
+        service.delete_participant(1)
+
+        # Now "Second" should be 1st, "Third" should be 2nd
+        assert p2.get_rank(DISC_CODE_ACC) == 1
+        assert p3.get_rank(DISC_CODE_ACC) == 2
+
+    def test_delete_nonexistent_participant_raises_error(self, service):
+        with pytest.raises(ValueError, match="not found"):
+            service.delete_participant(999)

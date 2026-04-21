@@ -143,6 +143,8 @@ class ParticipantTableView:
 
         # Bind inline editing events
         self.tree.bind("<Double-1>", self.on_tree_double_click)
+        self.tree.bind("<Button-3>", self._on_right_click)
+        self.tree.bind("<Button-2>", self._on_right_click)  # For macOS
 
     def pack(self, **kwargs) -> None:
         """Pack the table frame."""
@@ -176,6 +178,45 @@ class ParticipantTableView:
     def delete_row(self, iid):
         """Delete a row."""
         self.tree.delete(iid)
+
+    def _on_right_click(self, event):
+        """Show context menu on right-click."""
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Select the item
+        self.tree.selection_set(item)
+
+        # Create context menu
+        menu = tk.Menu(self.tree, tearoff=0)
+        menu.add_command(label="Delete line", command=lambda: self._on_delete_selected())
+        menu.post(event.x_root, event.y_root)
+
+    def _on_delete_selected(self):
+        """Delete the selected participant."""
+        selection = self.tree.selection()
+        if not selection:
+            return
+
+        iid = selection[0]
+        startnr = int(iid)
+
+        from tkinter import messagebox
+        if not messagebox.askyesno("Confirm Delete", f"Delete participant '{self.data[startnr]['name']}' (Start No. {startnr})?"):
+            return
+
+        try:
+            # Delete from service
+            self.service.delete_participant(startnr)
+
+            # Delete from tree
+            self.delete_row(iid)
+
+            # Update all other rows (to refresh ranks)
+            self.update_all_rows()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete participant:\n{e}")
 
     def open_columns_dialog(self, root):
         """Open dialog to show/hide columns."""

@@ -55,6 +55,22 @@ class CompetitionService:
 
         return participant
 
+    def delete_participant(self, startnumber: int):
+        """
+        Delete a participant from the competition.
+
+        Args:
+            startnumber: Participant startnumber (ID)
+        """
+        if not self.competition.startnumber_exists(startnumber):
+            raise ValueError(f"Participant with startnumber {startnumber} not found")
+
+        # Remove from competition
+        self.competition.remove_participant(startnumber)
+
+        # Recalculate all ranks (ranks change when a participant is removed)
+        self.recalculate_all_ranks()
+
     def update_participant_name(self, startnumber: int, name: str):
         """Update participant name."""
         participant = self.competition.get_participant(startnumber)
