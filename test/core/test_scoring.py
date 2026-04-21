@@ -15,3 +15,10 @@ def points_100(result):
 def test_accuracy_score_of_100_gives_1000_points():
     assert points_100(100) == 1000
 
+
+def test_tapir_points():
+    from boomerang_score.core.scorer import _points_tapir
+    assert _points_tapir(10) == 30.0
+    assert _points_tapir("5") == 15.0
+    assert _points_tapir("abc") == 0.0
+

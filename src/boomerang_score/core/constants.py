@@ -11,6 +11,7 @@ DISC_CODE_END = "end"
 DISC_CODE_FC = "fc"
 DISC_CODE_TC = "tc"
 DISC_CODE_TIMED = "timed"
+DISC_CODE_TAPIR = "tapir"
 
 # Discipline labels (uppercase) - used for display only
 DISC_LABEL_ACC = "ACC"
@@ -20,6 +21,7 @@ DISC_LABEL_END = "END"
 DISC_LABEL_FC = "FC"
 DISC_LABEL_TC = "TC"
 DISC_LABEL_TIMED = "TIMED"
+DISC_LABEL_TAPIR = "TAPIR"
 
 # All discipline codes (for iteration)
 ALL_DISCIPLINE_CODES = [
@@ -30,6 +32,7 @@ ALL_DISCIPLINE_CODES = [
     DISC_CODE_FC,
     DISC_CODE_TC,
     DISC_CODE_TIMED,
+    DISC_CODE_TAPIR,
 ]
 
 # All discipline labels (for display)
@@ -41,4 +44,5 @@ ALL_DISCIPLINE_LABELS = [
     DISC_LABEL_FC,
     DISC_LABEL_TC,
     DISC_LABEL_TIMED,
+    DISC_LABEL_TAPIR,
 ]

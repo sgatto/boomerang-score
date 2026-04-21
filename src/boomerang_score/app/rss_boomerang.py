@@ -17,7 +17,7 @@ if sys.platform.startswith("linux"):
         pass
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
 
-from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED
+from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
 from boomerang_score.services import CompetitionService, ExportService
 from boomerang_score.app.adapter import LegacyDataAdapter
 from boomerang_score.app.components import ParticipantTableView, InputPanel, DisciplinePanel, MenuBar
@@ -27,7 +27,7 @@ from tkinter import ttk, messagebox, filedialog
 
 # Constants
 BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
-EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED"]
+EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED", "TAPIR"]
 SORTED = ["StartNr", "Rank"]
 
 # Discipline Configuration
@@ -39,6 +39,7 @@ DISCIPLINES = [
     FC,
     TC,
     TIMED,
+    TAPIR,
 ]
 
 
@@ -106,11 +107,44 @@ class ScoreTableApp(tk.Tk):
 
     def _build_ui(self):
         """Build the main UI layout."""
+        # Main Canvas with scrollbars for the whole window
+        self.main_canvas = tk.Canvas(self, highlightthickness=0)
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+
+        self.v_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.main_canvas.yview)
+        self.v_scrollbar.pack(side="right", fill="y")
+        self.h_scrollbar = ttk.Scrollbar(self, orient="bottom", command=self.main_canvas.xview)
+        self.h_scrollbar.pack(side="bottom", fill="x")
+
+        self.main_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+
+        # Frame inside canvas
+        self.main_frame = ttk.Frame(self.main_canvas)
+        self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
+
+        def _on_frame_configure(event):
+            self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+        self.main_frame.bind("<Configure>", _on_frame_configure)
+
+        def _on_mousewheel(event):
+            if sys.platform.startswith("win"):
+                self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                if event.num == 4:
+                    self.main_canvas.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    self.main_canvas.yview_scroll(1, "units")
+
+        self.main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self.main_canvas.bind_all("<Button-4>", _on_mousewheel)
+        self.main_canvas.bind_all("<Button-5>", _on_mousewheel)
+
         # Menu bar
         self.menu_bar = MenuBar(self, self.export_service, None, self.competition)
 
         # Title + Logo section
-        frm_title = ttk.Frame(self, padding=(10, 6))
+        frm_title = ttk.Frame(self.main_frame, padding=(10, 6))
         frm_title.pack(fill="x")
 
         ttk.Label(frm_title, text="Competition Title:").grid(row=0, column=0, sticky="w")
@@ -133,19 +167,19 @@ class ScoreTableApp(tk.Tk):
 
         # Discipline Panel
         fonts = {'main': self.font_main, 'bold': self.font_bold}
-        self.discipline_panel = DisciplinePanel(self, DISCIPLINES, self.disc_state, self._on_toggle_disciplines)
+        self.discipline_panel = DisciplinePanel(self.main_frame, DISCIPLINES, self.disc_state, self._on_toggle_disciplines)
         self.discipline_panel.build()
         self.discipline_panel.pack(fill="x", padx=10, pady=(0, 6))
 
         # Input Panel
-        self.input_panel = InputPanel(self, DISCIPLINES, self.disc_state, self.service,
+        self.input_panel = InputPanel(self.main_frame, DISCIPLINES, self.disc_state, self.service,
                                       self.data, self.competition, fonts)
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
         self.input_panel.pack(fill="x", padx=10, pady=(0, 6))
 
         # Export buttons
-        frm_export = ttk.Frame(self, padding=(10, 8))
+        frm_export = ttk.Frame(self.main_frame, padding=(10, 8))
         frm_export.pack(fill="x")
         ttk.Button(frm_export, text="save CSV", command=self.export_csv).pack(side="left", padx=(0, 12))
         ttk.Button(frm_export, text="save PDF", command=self.export_pdf).pack(side="left", padx=(0, 12))
@@ -153,7 +187,7 @@ class ScoreTableApp(tk.Tk):
                   command=self.export_individual_reports).pack(side="left", padx=(0, 12))
 
         # Scoresheet section
-        frm_scoresheet = ttk.LabelFrame(self, text="Scoresheet", padding=(10, 8))
+        frm_scoresheet = ttk.LabelFrame(self.main_frame, text="Scoresheet", padding=(10, 8))
         frm_scoresheet.pack(fill="x", padx=10, pady=(0, 6))
 
         ttk.Label(frm_scoresheet, text="Number of circles:").grid(row=0, column=0, sticky="w")
@@ -173,7 +207,7 @@ class ScoreTableApp(tk.Tk):
                   command=self.export_scoresheet).grid(row=0, column=6, padx=(12, 0))
 
         # Table View
-        self.table_view = ParticipantTableView(self, DISCIPLINES, self.disc_state,
+        self.table_view = ParticipantTableView(self.main_frame, DISCIPLINES, self.disc_state,
                                               self.data, self.service, fonts)
         self.table_view.build()
         self.table_view.pack(fill="both", expand=True, padx=10, pady=(0, 10))
