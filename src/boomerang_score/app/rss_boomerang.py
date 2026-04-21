@@ -113,7 +113,7 @@ class ScoreTableApp(tk.Tk):
 
         self.v_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.main_canvas.yview)
         self.v_scrollbar.pack(side="right", fill="y")
-        self.h_scrollbar = ttk.Scrollbar(self, orient="bottom", command=self.main_canvas.xview)
+        self.h_scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.main_canvas.xview)
         self.h_scrollbar.pack(side="bottom", fill="x")
 
         self.main_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
@@ -321,92 +321,50 @@ class ScoreTableApp(tk.Tk):
 
     def export_scoresheet(self):
         """Export scoresheet for a specific event."""
+        if not self.data:
+            messagebox.showwarning("No Data", "There are no participants.")
+            return
+
         try:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4, landscape
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-        except Exception:
-            messagebox.showerror(
-                "ReportLab fehlt",
-                "Für den PDF-Export wird das Paket 'reportlab' benötigt.\n"
-                "Installiere es mit:\n\n    pip install reportlab"
+            num_circles = int(self.ent_circle.get().strip() or "1")
+            if num_circles < 1:
+                num_circles = 1
+        except (ValueError, AttributeError):
+            num_circles = 1
+
+        sort_method = self.sheetsort_var.get()
+        event = self.event_var.get()
+
+        out_file = filedialog.asksaveasfilename(
+            title="Save Scoresheet",
+            defaultextension=".docx",
+            filetypes=[
+                ("Word Document", "*.docx"),
+                ("PDF File", "*.pdf")
+            ]
+        )
+        if not out_file:
+            return
+
+        # Prepare participant order based on sort method
+        if sort_method == "Rank":
+            participant_order = sorted(
+                self.data.keys(),
+                key=lambda pid: (self.data[pid].get("overall_rank") or 10**9, self.data[pid].get("name") or "")
             )
-            return
-
-        filename = filedialog.asksaveasfilename(
-            title="PDF speichern",
-            defaultextension=".pdf",
-            filetypes=[("PDF-Datei", "*.pdf")]
-        )
-        if not filename:
-            return
-
-        doc = SimpleDocTemplate(
-            filename,
-            pagesize=landscape(A4),
-            leftMargin=15 * mm,
-            rightMargin=15 * mm,
-            topMargin=15 * mm,
-            bottomMargin=15 * mm,
-        )
-
-        styles = getSampleStyleSheet()
-        story = []
-
-        title_text = self.ent_title.get().strip() or "Wettbewerb"
-        story.append(Paragraph(title_text, styles["Title"]))
-        story.append(Spacer(1, 6))
-
-        headers = ["startnr", "Name", "Wurf 1", "Wurf 2", "Wurf 3", "Wurf 4", "Wurf 5", "Gesamt"]
-        col_keys = ["startnumber", "name", "total", "overall_rank"]
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                headers += [f"{d.label} Erg", f"{d.label} Pkt", f"{d.label} Rang"]
-                col_keys += [f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"]
-
-        data_rows = []
-        for iid in self.table_view.tree.get_children():
-            r = self.data[iid]
-            row_vals = []
-            for k in col_keys:
-                if k == "name":
-                    row_vals.append(str(r["name"]))
-                else:
-                    row_vals.append(self.table_view._format_number(r.get(k)))
-            data_rows.append(row_vals)
-
-        table_data = [headers] + data_rows
-
-        col_widths = [45 * mm, 11 * mm, 11 * mm, 11 * mm]
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                col_widths.extend([11 * mm, 11 * mm, 9 * mm])
-
-        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 6),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("ALIGN", (0, 1), (0, -1), "LEFT"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ]))
-        story.append(tbl)
+        else:
+            participant_order = sorted(
+                self.data.keys(),
+                key=lambda pid: (int(self.data[pid].get("startnummer") or 999), self.data[pid].get("name") or "")
+            )
 
         try:
-            doc.build(story)
-            messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
+            self.export_service.export_scoresheet(
+                out_file, event, num_circles, sort_method, participant_order
+            )
+            messagebox.showinfo("Export Successful", f"Scoresheet saved:\n{out_file}")
         except Exception as e:
-            messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
+            messagebox.showerror("Export Error", f"An error occurred:\n{e}")
 
 
 if __name__ == "__main__":
