@@ -118,6 +118,18 @@ class InputPanel:
         """Set callback to be called when Delete line is clicked."""
         self.on_delete_callback = callback
 
+    def set_save_csv_callback(self, callback):
+        """Set callback to be called when save CSV is clicked."""
+        self.on_save_csv_callback = callback
+
+    def set_save_pdf_callback(self, callback):
+        """Set callback to be called when save PDF is clicked."""
+        self.on_save_pdf_callback = callback
+
+    def set_overall_awards_callback(self, callback):
+        """Set callback to be called when Overall awards is clicked."""
+        self.on_overall_awards_callback = callback
+
     def on_add(self):
         """Handle add button click."""
         name = self.ent_name.get().strip()
@@ -159,6 +171,21 @@ class InputPanel:
         """Handle delete button click."""
         if self.on_delete_callback:
             self.on_delete_callback()
+
+    def on_save_csv(self):
+        """Handle save CSV button click."""
+        if self.on_save_csv_callback:
+            self.on_save_csv_callback()
+
+    def on_save_pdf(self):
+        """Handle save PDF button click."""
+        if self.on_save_pdf_callback:
+            self.on_save_pdf_callback()
+
+    def on_overall_awards(self):
+        """Handle Overall awards button click."""
+        if self.on_overall_awards_callback:
+            self.on_overall_awards_callback()
 
     def _clear_inputs(self):
         """Clear input fields after successful add."""

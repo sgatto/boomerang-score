@@ -177,15 +177,10 @@ class ScoreTableApp(tk.Tk):
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
         self.input_panel.set_delete_callback(lambda: self.table_view._on_delete_selected())
+        self.input_panel.set_save_csv_callback(self.export_csv)
+        self.input_panel.set_save_pdf_callback(self.export_pdf)
+        self.input_panel.set_overall_awards_callback(self.export_individual_reports)
         self.input_panel.pack(fill="x", padx=10, pady=(0, 6))
-
-        # Export buttons
-        frm_export = ttk.Frame(self.main_frame, padding=(10, 8))
-        frm_export.pack(fill="x")
-        ttk.Button(frm_export, text="save CSV", command=self.export_csv).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_export, text="save PDF", command=self.export_pdf).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_export, text="Overall awards (PDF/DOCX)",
-                  command=self.export_individual_reports).pack(side="left", padx=(0, 12))
 
         # Scoresheet section
         frm_scoresheet = ttk.LabelFrame(self.main_frame, text="Scoresheet", padding=(10, 8))
