@@ -176,6 +176,7 @@ class ScoreTableApp(tk.Tk):
                                       self.data, self.competition, fonts)
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
+        self.input_panel.set_delete_callback(lambda: self.table_view._on_delete_selected())
         self.input_panel.pack(fill="x", padx=10, pady=(0, 6))
 
         # Export buttons
