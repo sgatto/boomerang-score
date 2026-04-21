@@ -206,6 +206,7 @@ class ScoreTableApp(tk.Tk):
         self.table_view = ParticipantTableView(self.main_frame, DISCIPLINES, self.disc_state,
                                               self.data, self.service, fonts)
         self.table_view.build()
+        self.table_view.set_data_changed_callback(self._on_data_changed)
         self.table_view.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         # Update menu bar with table view reference
@@ -227,6 +228,14 @@ class ScoreTableApp(tk.Tk):
             self.competition.logo_path = path
             self.lbl_logo_name.config(text=os.path.basename(path))
 
+    def _on_data_changed(self):
+        """Handle data changes by triggering auto-save."""
+        all_cols = self.table_view.all_columns
+        headers = self.table_view.column_headers
+        # We might want to save in the order currently displayed in the tree
+        participant_order = list(self.table_view.tree.get_children())
+        self.export_service.auto_save(all_cols, headers, participant_order)
+
     def _on_toggle_disciplines(self):
         """Handle discipline checkbox toggle."""
         # Update active disciplines in service
@@ -241,6 +250,9 @@ class ScoreTableApp(tk.Tk):
         for startnr in self.data.keys():
             self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_row(str(startnr))
+        
+        # Trigger auto-save as column visibility might have changed (though auto-save saves all columns)
+        self._on_data_changed()
 
     def _on_add_participant(self, name, startnr, disc_values):
         """Handle adding a new participant."""
@@ -251,6 +263,7 @@ class ScoreTableApp(tk.Tk):
             iid = str(participant.startnumber)
             self.table_view.tree.insert("", "end", iid=iid, values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
+            self._on_data_changed()
             return True
         except ValueError as e:
             messagebox.showerror("Error", str(e))
@@ -269,7 +282,7 @@ class ScoreTableApp(tk.Tk):
         try:
             cols = list(self.table_view.tree["displaycolumns"])
             participant_order = list(self.table_view.tree.get_children())
-            self.export_service.export_csv(filename, cols, self.table_view.column_headers, participant_order)
+            self.export_service.export_csv(filename, cols, self.table_view.column_headers, participant_order, include_header=False)
             messagebox.showinfo("Export Successful", f"The CSV has been saved:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred:\n{e}")

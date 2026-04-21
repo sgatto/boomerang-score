@@ -32,7 +32,8 @@ class ExportService:
         self.disciplines = {d.code: d for d in disciplines}
 
     def export_csv(self, filename: str, visible_columns: list[str],
-                   column_headers: dict[str, str], participant_order: list[str]):
+                   column_headers: dict[str, str], participant_order: list[str],
+                   include_header: bool = False):
         """
         Export competition data to CSV.
 
@@ -41,11 +42,19 @@ class ExportService:
             visible_columns: List of column keys to export
             column_headers: Dict mapping column keys to display names
             participant_order: List of participant IDs in display order
+            include_header: Whether to include title and date header
         """
+        import datetime
         headers = [column_headers[c] for c in visible_columns]
 
         with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f, delimiter=";")
+
+            if include_header:
+                writer.writerow(["Titel", self.competition.title])
+                writer.writerow(["Datum", datetime.date.today().isoformat()])
+                writer.writerow([])
+
             writer.writerow(headers)
 
             for participant_id in participant_order:
@@ -76,6 +85,26 @@ class ExportService:
                         row.append("")
 
                 writer.writerow(row)
+
+    def auto_save(self, all_columns: list[str], column_headers: dict[str, str], participant_order: list[str]):
+        """
+        Automatically save the competition to a CSV file.
+
+        Args:
+            all_columns: List of all column keys
+            column_headers: Dict mapping column keys to display names
+            participant_order: List of participant IDs in order
+        """
+        import os
+        title = self.competition.title.strip() or "Wettbewerb"
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = os.path.join(os.getcwd(), safe_title + ".csv")
+
+        try:
+            self.export_csv(filename, all_columns, column_headers, participant_order, include_header=True)
+        except Exception:
+            # Silent failure for auto-save as in original code
+            pass
 
     def export_pdf_full_list(self, filename: str, participant_order: list[str]):
         """

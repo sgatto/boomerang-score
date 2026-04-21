@@ -49,6 +49,9 @@ class ParticipantTableView:
         self._edit_entry = None
         self._edit_iid_col = None
 
+        # Callbacks
+        self._on_data_changed = None
+
         # Tree widget (will be created by rebuild)
         self.tree = None
         self.frame = ttk.Frame(parent)
@@ -148,6 +151,15 @@ class ParticipantTableView:
         """Pack the table frame."""
         self.frame.pack(**kwargs)
 
+    def set_data_changed_callback(self, callback: Callable[[], None]) -> None:
+        """Set callback to be called when data changes."""
+        self._on_data_changed = callback
+
+    def _notify_data_changed(self) -> None:
+        """Notify that data has changed."""
+        if self._on_data_changed:
+            self._on_data_changed()
+
     def update_row(self, iid: str) -> None:
         """Update display of a single row (iid is string startnumber)."""
         startnr = int(iid)  # Convert tree ID to startnumber
@@ -213,6 +225,7 @@ class ParticipantTableView:
 
             # Update all other rows (to refresh ranks)
             self.update_all_rows()
+            self._notify_data_changed()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to delete participant:\n{e}")
 
@@ -319,6 +332,7 @@ class ParticipantTableView:
 
             # Update all rows to refresh calculated values
             self.update_all_rows()
+            self._notify_data_changed()
 
         except ValueError as e:
             from tkinter import messagebox
