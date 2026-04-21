@@ -126,13 +126,11 @@ class ParticipantTableView:
 
         # Scrollbars
         yscroll = ttk.Scrollbar(self.frame, orient="vertical", command=self.tree.yview)
-        xscroll = ttk.Scrollbar(self.frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        self.tree.configure(yscrollcommand=yscroll.set)
 
         # Pack tree and scrollbars
         yscroll.pack(side="right", fill="y")
         self.tree.pack(side="top", fill="both", expand=True)
-        xscroll.pack(side="bottom", fill="x")
 
         # Configure columns
         for col in self.all_columns:

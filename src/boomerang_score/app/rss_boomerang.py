@@ -109,13 +109,13 @@ class ScoreTableApp(tk.Tk):
         """Build the main UI layout."""
         # Main Canvas with scrollbars for the whole window
         self.main_canvas = tk.Canvas(self, highlightthickness=0)
-        self.main_canvas.pack(side="left", fill="both", expand=True)
 
         self.v_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.main_canvas.yview)
         self.v_scrollbar.pack(side="right", fill="y")
         self.h_scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.main_canvas.xview)
         self.h_scrollbar.pack(side="bottom", fill="x")
 
+        self.main_canvas.pack(side="left", fill="both", expand=True)
         self.main_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
 
         # Frame inside canvas
