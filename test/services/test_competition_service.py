@@ -223,3 +223,22 @@ class TestDeleteParticipant:
     def test_delete_nonexistent_participant_raises_error(self, service):
         with pytest.raises(ValueError, match="not found"):
             service.delete_participant(999)
+
+
+class TestClearData:
+    """Tests for clearing competition data."""
+
+    def test_clear_all_data(self, service, competition):
+        competition.title = "Special Competition"
+        competition.logo_path = "/path/to/logo.png"
+        service.add_participant("Test", 1, {"acc": 10.0})
+
+        assert len(competition.participants) == 1
+        assert competition.title == "Special Competition"
+        assert competition.logo_path == "/path/to/logo.png"
+
+        service.clear_all_data()
+
+        assert len(competition.participants) == 0
+        assert competition.title == "My Competition"
+        assert competition.logo_path is None

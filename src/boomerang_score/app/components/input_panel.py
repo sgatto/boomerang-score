@@ -41,6 +41,7 @@ class InputPanel:
         self.frm_dyn_inputs = None
         self.on_add_callback = None  # Callback when participant is added
         self.on_delete_callback = None  # Callback when "Delete line" is clicked
+        self.on_load_csv_callback = None
         self.on_save_csv_callback = None
         self.on_save_pdf_callback = None
         self.on_overall_awards_callback = None
@@ -74,6 +75,7 @@ class InputPanel:
         frm_buttons.grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
         ttk.Button(frm_buttons, text="Add line", command=self.on_add).pack(side="left", padx=(0, 12))
         ttk.Button(frm_buttons, text="Delete line", command=self.on_delete).pack(side="left", padx=(0, 12))
+        ttk.Button(frm_buttons, text="load CSV", command=self.on_load_csv).pack(side="left", padx=(0, 12))
         ttk.Button(frm_buttons, text="save CSV", command=self.on_save_csv).pack(side="left", padx=(0, 12))
         ttk.Button(frm_buttons, text="save PDF", command=self.on_save_pdf).pack(side="left", padx=(0, 12))
         ttk.Button(frm_buttons, text="Overall awards (PDF/DOCX)", command=self.on_overall_awards).pack(side="left", padx=(0, 12))
@@ -117,6 +119,10 @@ class InputPanel:
     def set_delete_callback(self, callback):
         """Set callback to be called when Delete line is clicked."""
         self.on_delete_callback = callback
+
+    def set_load_csv_callback(self, callback):
+        """Set callback to be called when load CSV is clicked."""
+        self.on_load_csv_callback = callback
 
     def set_save_csv_callback(self, callback):
         """Set callback to be called when save CSV is clicked."""
@@ -171,6 +177,11 @@ class InputPanel:
         """Handle delete button click."""
         if self.on_delete_callback:
             self.on_delete_callback()
+
+    def on_load_csv(self):
+        """Handle load CSV button click."""
+        if self.on_load_csv_callback:
+            self.on_load_csv_callback()
 
     def on_save_csv(self):
         """Handle save CSV button click."""

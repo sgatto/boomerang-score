@@ -177,6 +177,7 @@ class ScoreTableApp(tk.Tk):
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
         self.input_panel.set_delete_callback(lambda: self.table_view._on_delete_selected())
+        self.input_panel.set_load_csv_callback(self.load_csv)
         self.input_panel.set_save_csv_callback(self.export_csv)
         self.input_panel.set_save_pdf_callback(self.export_pdf)
         self.input_panel.set_overall_awards_callback(self.export_individual_reports)
@@ -268,6 +269,101 @@ class ScoreTableApp(tk.Tk):
         except ValueError as e:
             messagebox.showerror("Error", str(e))
             return False
+
+    def load_csv(self):
+        """Load competition from CSV file."""
+        filename = filedialog.askopenfilename(
+            title="Load CSV",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+        if not filename:
+            return
+
+        try:
+            data = self.export_service.load_csv(filename)
+            
+            # Clear existing data
+            self.service.clear_all_data()
+            
+            # Restore title
+            self.competition.title = data["title"]
+            self.ent_title.delete(0, tk.END)
+            self.ent_title.insert(0, self.competition.title)
+            self.lbl_title_display.config(text=self.competition.title)
+            
+            # Track which disciplines have data
+            disciplines_with_data = set()
+
+            # Helper for key normalization
+            def _normalize(k):
+                return k.strip().lower()
+
+            for row_data in data["participants"]:
+                normalized_row = {_normalize(k): v for k, v in row_data.items()}
+                
+                # Find name
+                name = None
+                for k in ["name", "participant", "teilnehmer"]:
+                    if k in normalized_row and normalized_row[k].strip():
+                        name = normalized_row[k].strip()
+                        break
+                if not name:
+                    continue
+
+                # Find startnumber
+                startnr = None
+                for k in ["startnummer", "startnr", "start", "startnr."]:
+                    if k in normalized_row and normalized_row[k].strip():
+                        try:
+                            startnr = int(float(normalized_row[k].strip()))
+                            break
+                        except ValueError:
+                            continue
+                if startnr is None:
+                    startnr = self.competition.next_free_startnumber()
+                
+                # Collect discipline results
+                disc_results = {}
+                for d in DISCIPLINES:
+                    # Look for code_res or label res
+                    res_val = None
+                    keys_to_try = [
+                        _normalize(f"{d.code}_res"),
+                        _normalize(f"{d.label} res"),
+                        _normalize(d.label),
+                        _normalize(d.code)
+                    ]
+                    for k in keys_to_try:
+                        if k in normalized_row and normalized_row[k].strip():
+                            try:
+                                res_val = float(normalized_row[k].strip().replace(",", "."))
+                                break
+                            except ValueError:
+                                continue
+                    
+                    if res_val is not None:
+                        disc_results[d.code] = res_val
+                        disciplines_with_data.add(d.code)
+                    else:
+                        disc_results[d.code] = 0.0
+
+                self.service.add_participant(name, startnr, disc_results)
+
+            # Update active disciplines based on what was loaded
+            if disciplines_with_data:
+                for d in DISCIPLINES:
+                    self.disc_state[d.code].set(d.code in disciplines_with_data)
+                self.service.set_active_disciplines(disciplines_with_data)
+            
+            # Refresh UI
+            self.input_panel.rebuild_discipline_inputs()
+            self.table_view.build()
+            self.table_view.update_all_rows()
+            
+            messagebox.showinfo("Load Successful", f"Loaded competition: {self.competition.title}")
+
+        except Exception as e:
+            messagebox.showerror("Load Error", f"An error occurred while loading CSV:\n{e}")
 
     def export_csv(self):
         """Export visible columns to CSV."""

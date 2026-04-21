@@ -106,6 +106,47 @@ class ExportService:
             # Silent failure for auto-save as in original code
             pass
 
+    def load_csv(self, filename: str) -> dict:
+        """
+        Load competition data from a CSV file.
+
+        Args:
+            filename: Path to the CSV file
+
+        Returns:
+            Dict containing 'title' and 'participants' (list of dicts)
+        """
+        try:
+            with open(filename, newline="", encoding="utf-8") as f:
+                reader = csv.reader(f, delimiter=";")
+                rows = list(reader)
+        except Exception as e:
+            raise ValueError(f"Could not read CSV file: {e}")
+
+        if len(rows) < 4:
+            raise ValueError("CSV file is too short or has invalid format.")
+
+        title = "My Competition"
+        if len(rows[0]) >= 2 and rows[0][0] == "Titel":
+            title = rows[0][1]
+
+        # Row 1: Date (ignored)
+        # Row 2: Empty (ignored)
+        # Row 3: Headers
+        headers = rows[3]
+        if not headers:
+            raise ValueError("CSV file is missing headers.")
+
+        participants_data = []
+        for row in rows[4:]:
+            if row:
+                participants_data.append(dict(zip(headers, row)))
+
+        return {
+            "title": title,
+            "participants": participants_data
+        }
+
     def export_pdf_full_list(self, filename: str, participant_order: list[str]):
         """
         Export full competition list to PDF.

@@ -186,3 +186,9 @@ class CompetitionService:
         for startnumber in self.competition.participants:
             self.recalculate_participant(startnumber)
         self.recalculate_all_ranks()
+
+    def clear_all_data(self):
+        """Clear all participants and title from the competition."""
+        self.competition.participants.clear()
+        self.competition.title = "My Competition"
+        self.competition.logo_path = None
