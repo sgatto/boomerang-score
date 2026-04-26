@@ -88,6 +88,40 @@ class TestUpdateParticipant:
         with pytest.raises(ValueError, match="not found"):
             service.update_participant_name(999, "Test")
 
+    def test_change_startnumber(self, service, competition):
+        service.add_participant("John Doe", 1, {DISC_CODE_ACC: 50.0})
+        service.add_participant("Jane Doe", 2, {DISC_CODE_ACC: 60.0})
+
+        # Change John's startnumber from 1 to 3
+        service.change_startnumber(1, 3)
+
+        assert competition.get_participant(1) is None
+        p = competition.get_participant(3)
+        assert p is not None
+        assert p.name == "John Doe"
+        assert p.startnumber == 3
+        assert p.get_result(DISC_CODE_ACC) == 50.0
+
+        # Ranks should be preserved/recalculated correctly
+        assert p.get_rank(DISC_CODE_ACC) == 2  # 50 < 60
+        assert competition.get_participant(2).get_rank(DISC_CODE_ACC) == 1
+
+    def test_change_startnumber_to_existing_raises_error(self, service, competition):
+        service.add_participant("John", 1, {})
+        service.add_participant("Jane", 2, {})
+
+        with pytest.raises(ValueError, match="already assigned"):
+            service.change_startnumber(1, 2)
+
+    def test_change_startnumber_nonexistent_raises_error(self, service):
+        with pytest.raises(ValueError, match="not found"):
+            service.change_startnumber(999, 10)
+
+    def test_change_startnumber_to_same_does_nothing(self, service, competition):
+        service.add_participant("John", 1, {})
+        service.change_startnumber(1, 1)
+        assert competition.get_participant(1) is not None
+
     def test_update_result(self, service, competition):
         service.add_participant("John", 1, {DISC_CODE_ACC: 50.0})
         service.update_participant_result(1, DISC_CODE_ACC, 45.0)
@@ -190,3 +224,55 @@ class TestRecalculation:
         # P1 now has worse score (40 < 45), so p2 should have better rank
         p2 = competition.get_participant(2)
         assert p2.get_rank(DISC_CODE_ACC) < p1.get_rank(DISC_CODE_ACC)
+
+
+class TestDeleteParticipant:
+    """Tests for deleting participants."""
+
+    def test_delete_participant(self, service, competition):
+        service.add_participant("John Doe", 1, {})
+        assert len(competition.participants) == 1
+
+        service.delete_participant(1)
+        assert len(competition.participants) == 0
+
+    def test_delete_participant_recalculates_ranks(self, service, competition):
+        service.add_participant("First", 1, {DISC_CODE_ACC: 100.0})
+        service.add_participant("Second", 2, {DISC_CODE_ACC: 50.0})
+        service.add_participant("Third", 3, {DISC_CODE_ACC: 25.0})
+
+        p2 = competition.get_participant(2)
+        p3 = competition.get_participant(3)
+
+        assert p2.get_rank(DISC_CODE_ACC) == 2
+        assert p3.get_rank(DISC_CODE_ACC) == 3
+
+        # Delete the first one
+        service.delete_participant(1)
+
+        # Now "Second" should be 1st, "Third" should be 2nd
+        assert p2.get_rank(DISC_CODE_ACC) == 1
+        assert p3.get_rank(DISC_CODE_ACC) == 2
+
+    def test_delete_nonexistent_participant_raises_error(self, service):
+        with pytest.raises(ValueError, match="not found"):
+            service.delete_participant(999)
+
+
+class TestClearData:
+    """Tests for clearing competition data."""
+
+    def test_clear_all_data(self, service, competition):
+        competition.title = "Special Competition"
+        competition.logo_path = "/path/to/logo.png"
+        service.add_participant("Test", 1, {"acc": 10.0})
+
+        assert len(competition.participants) == 1
+        assert competition.title == "Special Competition"
+        assert competition.logo_path == "/path/to/logo.png"
+
+        service.clear_all_data()
+
+        assert len(competition.participants) == 0
+        assert competition.title == "My Competition"
+        assert competition.logo_path is None
