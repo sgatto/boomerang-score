@@ -159,6 +159,19 @@ class ParticipantTableView:
         """Notify that data has changed."""
         if self._on_data_changed:
             self._on_data_changed()
+            
+    def refresh_from_data(self) -> None:
+        """Refresh the whole table from current data."""
+        # Clear existing rows
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            
+        # Re-insert all rows
+        for startnr in self.data.keys():
+            self.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.all_columns))
+            self.update_row(str(startnr))
+            
+        self._notify_data_changed()
 
     def update_row(self, iid: str) -> None:
         """Update display of a single row (iid is string startnumber)."""
@@ -279,9 +292,8 @@ class ParticipantTableView:
         col_index = int(colid.replace("#", "")) - 1
         col_key = self.tree["displaycolumns"][col_index]
 
-        # Editable columns: name and *_res for active disciplines
-        # Note: startnumber is immutable and cannot be edited
-        editable = {"name"}
+        # Editable columns: name, startnumber, and *_res for active disciplines
+        editable = {"name", "startnumber"}
         for d in self.disciplines:
             if self.disc_state[d.code].get():
                 editable.add(f"{d.code}_res")
@@ -320,9 +332,16 @@ class ParticipantTableView:
                     raise ValueError("Name cannot be empty")
                 self.service.update_participant_name(startnr, new_value)
             elif col_key == "startnumber":
-                # Startnumber is immutable, cannot be changed
-                from tkinter import messagebox
-                messagebox.showinfo("Cannot Edit", "Startnumber cannot be changed after creation")
+                new_startnr = self._parse_int(new_value)
+                if new_startnr is None:
+                    raise ValueError("Startnumber must be an integer")
+                if new_startnr == startnr:
+                    self.cancel_inline_edit()
+                    return
+                self.service.change_startnumber(startnr, new_startnr)
+                # After startnumber change, we need to rebuild the row with new IID
+                # It's easiest to just refresh the whole table data display
+                self.refresh_from_data()
                 self.cancel_inline_edit()
                 return
             elif col_key.endswith("_res"):

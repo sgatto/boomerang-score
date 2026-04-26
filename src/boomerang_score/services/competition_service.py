@@ -82,6 +82,41 @@ class CompetitionService:
 
         participant.name = name.strip()
 
+    def change_startnumber(self, old_startnumber: int, new_startnumber: int):
+        """
+        Change a participant's startnumber.
+        This deletes the old participant and adds a new one with the same data.
+
+        Args:
+            old_startnumber: Current startnumber
+            new_startnumber: New startnumber
+
+        Raises:
+            ValueError: If old_startnumber doesn't exist or new_startnumber is already in use
+        """
+        if old_startnumber == new_startnumber:
+            return
+
+        participant = self.competition.get_participant(old_startnumber)
+        if not participant:
+            raise ValueError(f"Participant with startnumber {old_startnumber} not found")
+
+        if self.competition.startnumber_exists(new_startnumber):
+            raise ValueError(f"Startnumber {new_startnumber} is already assigned")
+
+        # Create new participant with same data but new startnumber
+        new_participant = Participant(name=participant.name, startnumber=new_startnumber)
+        new_participant.disciplines = participant.disciplines
+        new_participant.total_points = participant.total_points
+        new_participant.overall_rank = participant.overall_rank
+
+        # Remove old and add new
+        self.competition.remove_participant(old_startnumber)
+        self.competition.add_participant(new_participant)
+
+        # Recalculate ranks (though they might not change, it's safer)
+        self.recalculate_all_ranks()
+
     def update_participant_result(self, startnumber: int, discipline_code: str, result: float):
         """
         Update a participant's result for a discipline.
