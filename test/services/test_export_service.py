@@ -88,5 +88,25 @@ class TestExportService(unittest.TestCase):
         self.assertEqual(data["participants"][0]["name"], "John Doe")
         self.assertEqual(data["participants"][1]["name"], "Jane Smith")
 
+    def test_export_pdf_full_list(self):
+        test_pdf = "test_full_list.pdf"
+        try:
+            self.export_service.export_pdf_full_list(test_pdf)
+            self.assertTrue(os.path.exists(test_pdf))
+            self.assertTrue(os.path.getsize(test_pdf) > 1000)
+        finally:
+            if os.path.exists(test_pdf):
+                os.remove(test_pdf)
+
+    def test_export_individual_reports_pdf(self):
+        test_pdf = "test_individual.pdf"
+        try:
+            self.export_service.export_individual_reports(test_pdf)
+            self.assertTrue(os.path.exists(test_pdf))
+            self.assertTrue(os.path.getsize(test_pdf) > 1000)
+        finally:
+            if os.path.exists(test_pdf):
+                os.remove(test_pdf)
+
 if __name__ == "__main__":
     unittest.main()

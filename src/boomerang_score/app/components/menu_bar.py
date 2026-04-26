@@ -70,8 +70,8 @@ class MenuBar:
             return
 
         try:
-            logo_path = getattr(self.competition, 'logo_path', None)
-            self.export_service.export_pdf_full_list(filename, logo_path)
+            participant_order = list(self.table_view.tree.get_children())
+            self.export_service.export_pdf_full_list(filename, participant_order)
             messagebox.showinfo("Export PDF", f"PDF created:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to create PDF:\n{e}")
@@ -86,8 +86,9 @@ class MenuBar:
             return
 
         try:
+            participant_order = list(self.table_view.tree.get_children())
             logo_path = getattr(self.competition, 'logo_path', None)
-            self.export_service.export_individual_reports(filename, logo_path)
+            self.export_service.export_individual_reports(filename, participant_order, logo_path)
             messagebox.showinfo("Export", f"Individual reports created:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to create reports:\n{e}")

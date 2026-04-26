@@ -162,14 +162,17 @@ class ExportService:
             "participants": participants_data
         }
 
-    def export_pdf_full_list(self, filename: str, participant_order: list[str]):
+    def export_pdf_full_list(self, filename: str, participant_order: Optional[list[Any]] = None):
         """
         Export full competition list to PDF.
 
         Args:
             filename: Output file path
-            participant_order: List of participant IDs in display order
+            participant_order: List of participant IDs in display order. If None, uses all.
         """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
@@ -211,7 +214,12 @@ class ExportService:
         # Build data rows
         data_rows = []
         for participant_id in participant_order:
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
@@ -264,16 +272,19 @@ class ExportService:
 
         doc.build(story)
 
-    def export_individual_reports(self, filename: str, participant_order: list[str],
+    def export_individual_reports(self, filename: str, participant_order: Optional[list[Any]] = None,
                                   logo_path: Optional[str] = None):
         """
         Export individual awards to PDF or DOCX.
 
         Args:
             filename: Output file path
-            participant_order: List of participant IDs in display order
+            participant_order: List of participant IDs in display order. If None, uses all.
             logo_path: Optional path to logo image
         """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         is_pdf = filename.lower().endswith(".pdf")
         is_docx = filename.lower().endswith(".docx")
 
@@ -285,7 +296,7 @@ class ExportService:
             raise ValueError("Filename must end with .pdf or .docx")
 
     def export_scoresheet(self, filename: str, event: str, num_circles: int,
-                          sort_method: str, participant_order: list[str]):
+                          sort_method: str, participant_order: Optional[list[Any]] = None):
         """
         Export competition scoresheets to PDF or DOCX.
 
@@ -294,8 +305,11 @@ class ExportService:
             event: Discipline code or event name
             num_circles: Number of circles to distribute participants into
             sort_method: How to sort and distribute ("StartNr" or "Rank")
-            participant_order: Base participant order (by StartNr or Rank)
+            participant_order: Base participant order (by StartNr or Rank). If None, uses all.
         """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         is_pdf = filename.lower().endswith(".pdf")
         is_docx = filename.lower().endswith(".docx")
 
@@ -566,7 +580,11 @@ class ExportService:
         title_text = self.competition.title or "Competition"
 
         for idx, participant_id in enumerate(participant_order):
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
@@ -659,7 +677,11 @@ class ExportService:
         title_text = self.competition.title or "Competition"
 
         for idx, participant_id in enumerate(participant_order):
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
