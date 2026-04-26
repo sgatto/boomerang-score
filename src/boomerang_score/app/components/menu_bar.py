@@ -49,7 +49,13 @@ class MenuBar:
 
         try:
             visible_cols = self.table_view.display_columns
-            self.export_service.export_csv(filename, visible_cols)
+            participant_order = list(self.table_view.tree.get_children())
+            self.export_service.export_csv(
+                filename, 
+                visible_cols, 
+                self.table_view.column_headers,
+                participant_order
+            )
             messagebox.showinfo("Export CSV", f"Data exported to:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export CSV:\n{e}")

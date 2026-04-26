@@ -1,7 +1,7 @@
 """Export functionality for competitions."""
 
 import csv
-from typing import Optional
+from typing import Optional, Any
 
 
 def format_number(value) -> str:
@@ -31,21 +31,31 @@ class ExportService:
         self.competition = competition
         self.disciplines = {d.code: d for d in disciplines}
 
-    def export_csv(self, filename: str, visible_columns: list[str],
-                   column_headers: dict[str, str], participant_order: list[str],
+    def export_csv(self, filename: str, visible_columns: Optional[list[str]] = None,
+                   column_headers: Optional[dict[str, str]] = None,
+                   participant_order: Optional[list[Any]] = None,
                    include_header: bool = False):
         """
         Export competition data to CSV.
 
         Args:
             filename: Output file path
-            visible_columns: List of column keys to export
-            column_headers: Dict mapping column keys to display names
-            participant_order: List of participant IDs in display order
+            visible_columns: List of column keys to export. If None, uses base columns.
+            column_headers: Dict mapping column keys to display names. If None, uses key names.
+            participant_order: List of participant IDs in display order. If None, uses all.
             include_header: Whether to include title and date header
         """
+        if visible_columns is None:
+            visible_columns = ["name", "startnumber", "total", "overall_rank"]
+
+        if column_headers is None:
+            column_headers = {c: c for c in visible_columns}
+
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         import datetime
-        headers = [column_headers[c] for c in visible_columns]
+        headers = [column_headers.get(c, c) for c in visible_columns]
 
         with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f, delimiter=";")
@@ -58,7 +68,12 @@ class ExportService:
             writer.writerow(headers)
 
             for participant_id in participant_order:
-                participant = self.competition.get_participant(participant_id)
+                try:
+                    pid = int(participant_id)
+                except (ValueError, TypeError):
+                    continue
+
+                participant = self.competition.get_participant(pid)
                 if not participant:
                     continue
 
