@@ -290,15 +290,19 @@ class ScoreTableApp(tk.Tk):
     def _update_window_title(self):
         if self._current_file:
             self.title(f"Scoring Table – {os.path.basename(self._current_file)}")
+            light_green = "#D4EDDA"
+            dark_green = "#155724"
             self.status_bar.config(
                 text=f"Auto-saving to: {os.path.basename(self._current_file)}",
-                bg="#D4EDDA", fg="#155724",
+                bg=light_green, fg=dark_green,
             )
         else:
             self.title("Scoring Table – Dynamic Disciplines")
+            light_amber = "#FFF3CD"
+            dark_amber = "#856404"
             self.status_bar.config(
                 text="No file open – use File → Save As to enable auto-save",
-                bg="#FFF3CD", fg="#856404",
+                bg=light_amber, fg=dark_amber,
             )
 
     def file_new(self):
