@@ -49,6 +49,9 @@ class ParticipantTableView:
         self._edit_entry = None
         self._edit_iid_col = None
 
+        # Callbacks
+        self._on_data_changed = None
+
         # Tree widget (will be created by rebuild)
         self.tree = None
         self.frame = ttk.Frame(parent)
@@ -126,13 +129,11 @@ class ParticipantTableView:
 
         # Scrollbars
         yscroll = ttk.Scrollbar(self.frame, orient="vertical", command=self.tree.yview)
-        xscroll = ttk.Scrollbar(self.frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        self.tree.configure(yscrollcommand=yscroll.set)
 
         # Pack tree and scrollbars
         yscroll.pack(side="right", fill="y")
         self.tree.pack(side="top", fill="both", expand=True)
-        xscroll.pack(side="bottom", fill="x")
 
         # Configure columns
         for col in self.all_columns:
@@ -143,10 +144,34 @@ class ParticipantTableView:
 
         # Bind inline editing events
         self.tree.bind("<Double-1>", self.on_tree_double_click)
+        self.tree.bind("<Button-3>", self._on_right_click)
+        self.tree.bind("<Button-2>", self._on_right_click)  # For macOS
 
     def pack(self, **kwargs) -> None:
         """Pack the table frame."""
         self.frame.pack(**kwargs)
+
+    def set_data_changed_callback(self, callback: Callable[[], None]) -> None:
+        """Set callback to be called when data changes."""
+        self._on_data_changed = callback
+
+    def _notify_data_changed(self) -> None:
+        """Notify that data has changed."""
+        if self._on_data_changed:
+            self._on_data_changed()
+            
+    def refresh_from_data(self) -> None:
+        """Refresh the whole table from current data."""
+        # Clear existing rows
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+            
+        # Re-insert all rows
+        for startnr in self.data.keys():
+            self.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.all_columns))
+            self.update_row(str(startnr))
+            
+        self._notify_data_changed()
 
     def update_row(self, iid: str) -> None:
         """Update display of a single row (iid is string startnumber)."""
@@ -176,6 +201,46 @@ class ParticipantTableView:
     def delete_row(self, iid):
         """Delete a row."""
         self.tree.delete(iid)
+
+    def _on_right_click(self, event):
+        """Show context menu on right-click."""
+        item = self.tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Select the item
+        self.tree.selection_set(item)
+
+        # Create context menu
+        menu = tk.Menu(self.tree, tearoff=0)
+        menu.add_command(label="Delete line", command=lambda: self._on_delete_selected())
+        menu.post(event.x_root, event.y_root)
+
+    def _on_delete_selected(self):
+        """Delete the selected participant."""
+        selection = self.tree.selection()
+        if not selection:
+            return
+
+        iid = selection[0]
+        startnr = int(iid)
+
+        from tkinter import messagebox
+        if not messagebox.askyesno("Confirm Delete", f"Delete participant '{self.data[startnr]['name']}' (Start No. {startnr})?"):
+            return
+
+        try:
+            # Delete from service
+            self.service.delete_participant(startnr)
+
+            # Delete from tree
+            self.delete_row(iid)
+
+            # Update all other rows (to refresh ranks)
+            self.update_all_rows()
+            self._notify_data_changed()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to delete participant:\n{e}")
 
     def open_columns_dialog(self, root):
         """Open dialog to show/hide columns."""
@@ -227,9 +292,8 @@ class ParticipantTableView:
         col_index = int(colid.replace("#", "")) - 1
         col_key = self.tree["displaycolumns"][col_index]
 
-        # Editable columns: name and *_res for active disciplines
-        # Note: startnumber is immutable and cannot be edited
-        editable = {"name"}
+        # Editable columns: name, startnumber, and *_res for active disciplines
+        editable = {"name", "startnumber"}
         for d in self.disciplines:
             if self.disc_state[d.code].get():
                 editable.add(f"{d.code}_res")
@@ -268,9 +332,16 @@ class ParticipantTableView:
                     raise ValueError("Name cannot be empty")
                 self.service.update_participant_name(startnr, new_value)
             elif col_key == "startnumber":
-                # Startnumber is immutable, cannot be changed
-                from tkinter import messagebox
-                messagebox.showinfo("Cannot Edit", "Startnumber cannot be changed after creation")
+                new_startnr = self._parse_int(new_value)
+                if new_startnr is None:
+                    raise ValueError("Startnumber must be an integer")
+                if new_startnr == startnr:
+                    self.cancel_inline_edit()
+                    return
+                self.service.change_startnumber(startnr, new_startnr)
+                # After startnumber change, we need to rebuild the row with new IID
+                # It's easiest to just refresh the whole table data display
+                self.refresh_from_data()
                 self.cancel_inline_edit()
                 return
             elif col_key.endswith("_res"):
@@ -280,6 +351,7 @@ class ParticipantTableView:
 
             # Update all rows to refresh calculated values
             self.update_all_rows()
+            self._notify_data_changed()
 
         except ValueError as e:
             from tkinter import messagebox

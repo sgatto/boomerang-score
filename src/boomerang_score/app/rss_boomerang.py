@@ -17,7 +17,7 @@ if sys.platform.startswith("linux"):
         pass
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
 
-from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED
+from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
 from boomerang_score.services import CompetitionService, ExportService
 from boomerang_score.app.adapter import LegacyDataAdapter
 from boomerang_score.app.components import ParticipantTableView, InputPanel, DisciplinePanel, MenuBar
@@ -27,7 +27,7 @@ from tkinter import ttk, messagebox, filedialog
 
 # Constants
 BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
-EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED"]
+EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED", "TAPIR"]
 SORTED = ["StartNr", "Rank"]
 
 # Discipline Configuration
@@ -39,6 +39,7 @@ DISCIPLINES = [
     FC,
     TC,
     TIMED,
+    TAPIR,
 ]
 
 
@@ -106,11 +107,44 @@ class ScoreTableApp(tk.Tk):
 
     def _build_ui(self):
         """Build the main UI layout."""
+        # Main Canvas with scrollbars for the whole window
+        self.main_canvas = tk.Canvas(self, highlightthickness=0)
+
+        self.v_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.main_canvas.yview)
+        self.v_scrollbar.pack(side="right", fill="y")
+        self.h_scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.main_canvas.xview)
+        self.h_scrollbar.pack(side="bottom", fill="x")
+
+        self.main_canvas.pack(side="left", fill="both", expand=True)
+        self.main_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+
+        # Frame inside canvas
+        self.main_frame = ttk.Frame(self.main_canvas)
+        self.main_canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
+
+        def _on_frame_configure(event):
+            self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+        self.main_frame.bind("<Configure>", _on_frame_configure)
+
+        def _on_mousewheel(event):
+            if sys.platform.startswith("win"):
+                self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                if event.num == 4:
+                    self.main_canvas.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    self.main_canvas.yview_scroll(1, "units")
+
+        self.main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self.main_canvas.bind_all("<Button-4>", _on_mousewheel)
+        self.main_canvas.bind_all("<Button-5>", _on_mousewheel)
+
         # Menu bar
         self.menu_bar = MenuBar(self, self.export_service, None, self.competition)
 
         # Title + Logo section
-        frm_title = ttk.Frame(self, padding=(10, 6))
+        frm_title = ttk.Frame(self.main_frame, padding=(10, 6))
         frm_title.pack(fill="x")
 
         ttk.Label(frm_title, text="Competition Title:").grid(row=0, column=0, sticky="w")
@@ -133,27 +167,24 @@ class ScoreTableApp(tk.Tk):
 
         # Discipline Panel
         fonts = {'main': self.font_main, 'bold': self.font_bold}
-        self.discipline_panel = DisciplinePanel(self, DISCIPLINES, self.disc_state, self._on_toggle_disciplines)
+        self.discipline_panel = DisciplinePanel(self.main_frame, DISCIPLINES, self.disc_state, self._on_toggle_disciplines)
         self.discipline_panel.build()
         self.discipline_panel.pack(fill="x", padx=10, pady=(0, 6))
 
         # Input Panel
-        self.input_panel = InputPanel(self, DISCIPLINES, self.disc_state, self.service,
+        self.input_panel = InputPanel(self.main_frame, DISCIPLINES, self.disc_state, self.service,
                                       self.data, self.competition, fonts)
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
+        self.input_panel.set_delete_callback(lambda: self.table_view._on_delete_selected())
+        self.input_panel.set_load_csv_callback(self.load_csv)
+        self.input_panel.set_save_csv_callback(self.export_csv)
+        self.input_panel.set_save_pdf_callback(self.export_pdf)
+        self.input_panel.set_overall_awards_callback(self.export_individual_reports)
         self.input_panel.pack(fill="x", padx=10, pady=(0, 6))
 
-        # Export buttons
-        frm_export = ttk.Frame(self, padding=(10, 8))
-        frm_export.pack(fill="x")
-        ttk.Button(frm_export, text="save CSV", command=self.export_csv).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_export, text="save PDF", command=self.export_pdf).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_export, text="Overall awards (PDF/DOCX)",
-                  command=self.export_individual_reports).pack(side="left", padx=(0, 12))
-
         # Scoresheet section
-        frm_scoresheet = ttk.LabelFrame(self, text="Scoresheet", padding=(10, 8))
+        frm_scoresheet = ttk.LabelFrame(self.main_frame, text="Scoresheet", padding=(10, 8))
         frm_scoresheet.pack(fill="x", padx=10, pady=(0, 6))
 
         ttk.Label(frm_scoresheet, text="Number of circles:").grid(row=0, column=0, sticky="w")
@@ -173,9 +204,10 @@ class ScoreTableApp(tk.Tk):
                   command=self.export_scoresheet).grid(row=0, column=6, padx=(12, 0))
 
         # Table View
-        self.table_view = ParticipantTableView(self, DISCIPLINES, self.disc_state,
+        self.table_view = ParticipantTableView(self.main_frame, DISCIPLINES, self.disc_state,
                                               self.data, self.service, fonts)
         self.table_view.build()
+        self.table_view.set_data_changed_callback(self._on_data_changed)
         self.table_view.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         # Update menu bar with table view reference
@@ -197,6 +229,14 @@ class ScoreTableApp(tk.Tk):
             self.competition.logo_path = path
             self.lbl_logo_name.config(text=os.path.basename(path))
 
+    def _on_data_changed(self):
+        """Handle data changes by triggering auto-save."""
+        all_cols = self.table_view.all_columns
+        headers = self.table_view.column_headers
+        # We might want to save in the order currently displayed in the tree
+        participant_order = list(self.table_view.tree.get_children())
+        self.export_service.auto_save(all_cols, headers, participant_order)
+
     def _on_toggle_disciplines(self):
         """Handle discipline checkbox toggle."""
         # Update active disciplines in service
@@ -211,6 +251,9 @@ class ScoreTableApp(tk.Tk):
         for startnr in self.data.keys():
             self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_row(str(startnr))
+        
+        # Trigger auto-save as column visibility might have changed (though auto-save saves all columns)
+        self._on_data_changed()
 
     def _on_add_participant(self, name, startnr, disc_values):
         """Handle adding a new participant."""
@@ -221,10 +264,106 @@ class ScoreTableApp(tk.Tk):
             iid = str(participant.startnumber)
             self.table_view.tree.insert("", "end", iid=iid, values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
+            self._on_data_changed()
             return True
         except ValueError as e:
             messagebox.showerror("Error", str(e))
             return False
+
+    def load_csv(self):
+        """Load competition from CSV file."""
+        filename = filedialog.askopenfilename(
+            title="Load CSV",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+        if not filename:
+            return
+
+        try:
+            data = self.export_service.load_csv(filename)
+            
+            # Clear existing data
+            self.service.clear_all_data()
+            
+            # Restore title
+            self.competition.title = data["title"]
+            self.ent_title.delete(0, tk.END)
+            self.ent_title.insert(0, self.competition.title)
+            self.lbl_title_display.config(text=self.competition.title)
+            
+            # Track which disciplines have data
+            disciplines_with_data = set()
+
+            # Helper for key normalization
+            def _normalize(k):
+                return k.strip().lower()
+
+            for row_data in data["participants"]:
+                normalized_row = {_normalize(k): v for k, v in row_data.items()}
+                
+                # Find name
+                name = None
+                for k in ["name", "participant", "teilnehmer"]:
+                    if k in normalized_row and normalized_row[k].strip():
+                        name = normalized_row[k].strip()
+                        break
+                if not name:
+                    continue
+
+                # Find startnumber
+                startnr = None
+                for k in ["startnummer", "startnr", "start", "startnr."]:
+                    if k in normalized_row and normalized_row[k].strip():
+                        try:
+                            startnr = int(float(normalized_row[k].strip()))
+                            break
+                        except ValueError:
+                            continue
+                if startnr is None:
+                    startnr = self.competition.next_free_startnumber()
+                
+                # Collect discipline results
+                disc_results = {}
+                for d in DISCIPLINES:
+                    # Look for code_res or label res
+                    res_val = None
+                    keys_to_try = [
+                        _normalize(f"{d.code}_res"),
+                        _normalize(f"{d.label} res"),
+                        _normalize(d.label),
+                        _normalize(d.code)
+                    ]
+                    for k in keys_to_try:
+                        if k in normalized_row and normalized_row[k].strip():
+                            try:
+                                res_val = float(normalized_row[k].strip().replace(",", "."))
+                                break
+                            except ValueError:
+                                continue
+                    
+                    if res_val is not None:
+                        disc_results[d.code] = res_val
+                        disciplines_with_data.add(d.code)
+                    else:
+                        disc_results[d.code] = 0.0
+
+                self.service.add_participant(name, startnr, disc_results)
+
+            # Update active disciplines based on what was loaded
+            if disciplines_with_data:
+                for d in DISCIPLINES:
+                    self.disc_state[d.code].set(d.code in disciplines_with_data)
+                self.service.set_active_disciplines(disciplines_with_data)
+            
+            # Refresh UI
+            self.input_panel.rebuild_discipline_inputs()
+            self.table_view.build()
+            self.table_view.update_all_rows()
+            
+            messagebox.showinfo("Load Successful", f"Loaded competition: {self.competition.title}")
+
+        except Exception as e:
+            messagebox.showerror("Load Error", f"An error occurred while loading CSV:\n{e}")
 
     def export_csv(self):
         """Export visible columns to CSV."""
@@ -239,7 +378,7 @@ class ScoreTableApp(tk.Tk):
         try:
             cols = list(self.table_view.tree["displaycolumns"])
             participant_order = list(self.table_view.tree.get_children())
-            self.export_service.export_csv(filename, cols, self.table_view.column_headers, participant_order)
+            self.export_service.export_csv(filename, cols, self.table_view.column_headers, participant_order, include_header=False)
             messagebox.showinfo("Export Successful", f"The CSV has been saved:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"An error occurred:\n{e}")
@@ -287,92 +426,50 @@ class ScoreTableApp(tk.Tk):
 
     def export_scoresheet(self):
         """Export scoresheet for a specific event."""
+        if not self.data:
+            messagebox.showwarning("No Data", "There are no participants.")
+            return
+
         try:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4, landscape
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-        except Exception:
-            messagebox.showerror(
-                "ReportLab fehlt",
-                "Für den PDF-Export wird das Paket 'reportlab' benötigt.\n"
-                "Installiere es mit:\n\n    pip install reportlab"
+            num_circles = int(self.ent_circle.get().strip() or "1")
+            if num_circles < 1:
+                num_circles = 1
+        except (ValueError, AttributeError):
+            num_circles = 1
+
+        sort_method = self.sheetsort_var.get()
+        event = self.event_var.get()
+
+        out_file = filedialog.asksaveasfilename(
+            title="Save Scoresheet",
+            defaultextension=".docx",
+            filetypes=[
+                ("Word Document", "*.docx"),
+                ("PDF File", "*.pdf")
+            ]
+        )
+        if not out_file:
+            return
+
+        # Prepare participant order based on sort method
+        if sort_method == "Rank":
+            participant_order = sorted(
+                self.data.keys(),
+                key=lambda pid: (self.data[pid].get("overall_rank") or 10**9, self.data[pid].get("name") or "")
             )
-            return
-
-        filename = filedialog.asksaveasfilename(
-            title="PDF speichern",
-            defaultextension=".pdf",
-            filetypes=[("PDF-Datei", "*.pdf")]
-        )
-        if not filename:
-            return
-
-        doc = SimpleDocTemplate(
-            filename,
-            pagesize=landscape(A4),
-            leftMargin=15 * mm,
-            rightMargin=15 * mm,
-            topMargin=15 * mm,
-            bottomMargin=15 * mm,
-        )
-
-        styles = getSampleStyleSheet()
-        story = []
-
-        title_text = self.ent_title.get().strip() or "Wettbewerb"
-        story.append(Paragraph(title_text, styles["Title"]))
-        story.append(Spacer(1, 6))
-
-        headers = ["startnr", "Name", "Wurf 1", "Wurf 2", "Wurf 3", "Wurf 4", "Wurf 5", "Gesamt"]
-        col_keys = ["startnumber", "name", "total", "overall_rank"]
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                headers += [f"{d.label} Erg", f"{d.label} Pkt", f"{d.label} Rang"]
-                col_keys += [f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"]
-
-        data_rows = []
-        for iid in self.table_view.tree.get_children():
-            r = self.data[iid]
-            row_vals = []
-            for k in col_keys:
-                if k == "name":
-                    row_vals.append(str(r["name"]))
-                else:
-                    row_vals.append(self.table_view._format_number(r.get(k)))
-            data_rows.append(row_vals)
-
-        table_data = [headers] + data_rows
-
-        col_widths = [45 * mm, 11 * mm, 11 * mm, 11 * mm]
-        for d in DISCIPLINES:
-            if self.disc_state[d.code].get():
-                col_widths.extend([11 * mm, 11 * mm, 9 * mm])
-
-        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 6),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("ALIGN", (0, 1), (0, -1), "LEFT"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ]))
-        story.append(tbl)
+        else:
+            participant_order = sorted(
+                self.data.keys(),
+                key=lambda pid: (int(self.data[pid].get("startnummer") or 999), self.data[pid].get("name") or "")
+            )
 
         try:
-            doc.build(story)
-            messagebox.showinfo("Export Successful", f"The PDF has been saved:\n{filename}")
+            self.export_service.export_scoresheet(
+                out_file, event, num_circles, sort_method, participant_order
+            )
+            messagebox.showinfo("Export Successful", f"Scoresheet saved:\n{out_file}")
         except Exception as e:
-            messagebox.showerror("PDF Error", f"An error occurred while creating the PDF:\n{e}")
+            messagebox.showerror("Export Error", f"An error occurred:\n{e}")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Export functionality for competitions."""
 
 import csv
-from typing import Optional
+from typing import Optional, Any
 
 
 def format_number(value) -> str:
@@ -31,25 +31,49 @@ class ExportService:
         self.competition = competition
         self.disciplines = {d.code: d for d in disciplines}
 
-    def export_csv(self, filename: str, visible_columns: list[str],
-                   column_headers: dict[str, str], participant_order: list[str]):
+    def export_csv(self, filename: str, visible_columns: Optional[list[str]] = None,
+                   column_headers: Optional[dict[str, str]] = None,
+                   participant_order: Optional[list[Any]] = None,
+                   include_header: bool = False):
         """
         Export competition data to CSV.
 
         Args:
             filename: Output file path
-            visible_columns: List of column keys to export
-            column_headers: Dict mapping column keys to display names
-            participant_order: List of participant IDs in display order
+            visible_columns: List of column keys to export. If None, uses base columns.
+            column_headers: Dict mapping column keys to display names. If None, uses key names.
+            participant_order: List of participant IDs in display order. If None, uses all.
+            include_header: Whether to include title and date header
         """
-        headers = [column_headers[c] for c in visible_columns]
+        if visible_columns is None:
+            visible_columns = ["name", "startnumber", "total", "overall_rank"]
+
+        if column_headers is None:
+            column_headers = {c: c for c in visible_columns}
+
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
+        import datetime
+        headers = [column_headers.get(c, c) for c in visible_columns]
 
         with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f, delimiter=";")
+
+            if include_header:
+                writer.writerow(["Titel", self.competition.title])
+                writer.writerow(["Datum", datetime.date.today().isoformat()])
+                writer.writerow([])
+
             writer.writerow(headers)
 
             for participant_id in participant_order:
-                participant = self.competition.get_participant(participant_id)
+                try:
+                    pid = int(participant_id)
+                except (ValueError, TypeError):
+                    continue
+
+                participant = self.competition.get_participant(pid)
                 if not participant:
                     continue
 
@@ -77,14 +101,78 @@ class ExportService:
 
                 writer.writerow(row)
 
-    def export_pdf_full_list(self, filename: str, participant_order: list[str]):
+    def auto_save(self, all_columns: list[str], column_headers: dict[str, str], participant_order: list[str]):
+        """
+        Automatically save the competition to a CSV file.
+
+        Args:
+            all_columns: List of all column keys
+            column_headers: Dict mapping column keys to display names
+            participant_order: List of participant IDs in order
+        """
+        import os
+        title = self.competition.title.strip() or "Wettbewerb"
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        filename = os.path.join(os.getcwd(), safe_title + ".csv")
+
+        try:
+            self.export_csv(filename, all_columns, column_headers, participant_order, include_header=True)
+        except Exception:
+            # Silent failure for auto-save as in original code
+            pass
+
+    def load_csv(self, filename: str) -> dict:
+        """
+        Load competition data from a CSV file.
+
+        Args:
+            filename: Path to the CSV file
+
+        Returns:
+            Dict containing 'title' and 'participants' (list of dicts)
+        """
+        try:
+            with open(filename, newline="", encoding="utf-8") as f:
+                reader = csv.reader(f, delimiter=";")
+                rows = list(reader)
+        except Exception as e:
+            raise ValueError(f"Could not read CSV file: {e}")
+
+        if len(rows) < 4:
+            raise ValueError("CSV file is too short or has invalid format.")
+
+        title = "My Competition"
+        if len(rows[0]) >= 2 and rows[0][0] == "Titel":
+            title = rows[0][1]
+
+        # Row 1: Date (ignored)
+        # Row 2: Empty (ignored)
+        # Row 3: Headers
+        headers = rows[3]
+        if not headers:
+            raise ValueError("CSV file is missing headers.")
+
+        participants_data = []
+        for row in rows[4:]:
+            if row:
+                participants_data.append(dict(zip(headers, row)))
+
+        return {
+            "title": title,
+            "participants": participants_data
+        }
+
+    def export_pdf_full_list(self, filename: str, participant_order: Optional[list[Any]] = None):
         """
         Export full competition list to PDF.
 
         Args:
             filename: Output file path
-            participant_order: List of participant IDs in display order
+            participant_order: List of participant IDs in display order. If None, uses all.
         """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
@@ -126,7 +214,12 @@ class ExportService:
         # Build data rows
         data_rows = []
         for participant_id in participant_order:
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
@@ -179,16 +272,19 @@ class ExportService:
 
         doc.build(story)
 
-    def export_individual_reports(self, filename: str, participant_order: list[str],
+    def export_individual_reports(self, filename: str, participant_order: Optional[list[Any]] = None,
                                   logo_path: Optional[str] = None):
         """
         Export individual awards to PDF or DOCX.
 
         Args:
             filename: Output file path
-            participant_order: List of participant IDs in display order
+            participant_order: List of participant IDs in display order. If None, uses all.
             logo_path: Optional path to logo image
         """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
         is_pdf = filename.lower().endswith(".pdf")
         is_docx = filename.lower().endswith(".docx")
 
@@ -198,6 +294,246 @@ class ExportService:
             self._export_individual_pdf(filename, participant_order, logo_path)
         else:
             raise ValueError("Filename must end with .pdf or .docx")
+
+    def export_scoresheet(self, filename: str, event: str, num_circles: int,
+                          sort_method: str, participant_order: Optional[list[Any]] = None):
+        """
+        Export competition scoresheets to PDF or DOCX.
+
+        Args:
+            filename: Output file path
+            event: Discipline code or event name
+            num_circles: Number of circles to distribute participants into
+            sort_method: How to sort and distribute ("StartNr" or "Rank")
+            participant_order: Base participant order (by StartNr or Rank). If None, uses all.
+        """
+        if participant_order is None:
+            participant_order = sorted(self.competition.participants.keys())
+
+        is_pdf = filename.lower().endswith(".pdf")
+        is_docx = filename.lower().endswith(".docx")
+
+        # Distribute entries to circles
+        circles_data = self._distribute_entries_to_circles(participant_order, num_circles, sort_method)
+
+        # Get scoresheet columns configuration
+        header_rows, num_empty_cols, col_widths = self._get_scoresheet_columns(event)
+
+        if is_docx:
+            self._export_scoresheet_docx(filename, event, circles_data, header_rows, col_widths)
+        elif is_pdf:
+            self._export_scoresheet_pdf(filename, event, circles_data, header_rows, num_empty_cols, col_widths)
+        else:
+            raise ValueError("Filename must end with .pdf or .docx")
+
+    def _get_scoresheet_columns(self, event: str):
+        """Get columns configuration for a specific event scoresheet."""
+        from reportlab.lib.units import mm
+        event = event.upper()
+
+        if event == "ACC":
+            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            num_empty_cols = 10
+            col_widths = [12*mm, 40*mm] + [12*mm] * 10 + [15*mm]
+            return [headers], num_empty_cols, col_widths
+        elif event == "AUS":
+            main_headers = ["Startnr", "Name"]
+            sub_headers = ["", ""]
+            for i in range(1, 6):
+                main_headers.extend([f"Throw {i}", "", "", ""])
+                sub_headers.extend(["Dist", "Catch", "Acc", "To"])
+            main_headers.append("Result")
+            sub_headers.append("")
+            num_empty_cols = 20
+            col_widths = [12*mm, 35*mm] + [10*mm] * 20 + [15*mm]
+            return [main_headers, sub_headers], num_empty_cols, col_widths
+        elif event == "END":
+            distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+            headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
+            num_empty_cols = 16
+            col_widths = [12*mm, 35*mm] + [10*mm] * 16 + [15*mm]
+            return [headers], num_empty_cols, col_widths
+        elif event == "FC":
+            headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
+            num_empty_cols = 2
+            col_widths = [12*mm, 40*mm] + [40*mm] * 2 + [40*mm]
+            return [headers], num_empty_cols, col_widths
+        elif event == "MTA":
+            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            num_empty_cols = 5
+            col_widths = [12*mm, 40*mm] + [20*mm] * 5 + [20*mm]
+            return [headers], num_empty_cols, col_widths
+        elif event == "TC":
+            main_headers = ["Startnr", "Name"] + ["Throw 1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "", "Doubl.1", "", "2", "", "3", "", "4", "", "5", ""] + ["Result"]
+            sub_headers = ["", ""] + ["Left-\nhand\nclean", "Right-\nhand\nclean", "2 hand\nbehind\nback", "2 hand\nunder\nthe-leg", "Eagle\ncatch", "Hacky\ncatch", "Tunnel\ncatch", "1 hand\nbehind\nback", "1 hand\nunder\nthe leg", "Foot\ncatch", "Total\nSingle", "2 hand\nbehind-\nthe-back", "2 hand\nunder-\nthe-leg", "Left-\nhand\nclean", "Hacky\ncatch", "Right-\nhand\nclean", "Tunnel\ncatch", "1 hand\nbehind\nthe back", "1 hand\nunder\nthe leg", "Eagle\ncatch", "Foot\ncatch"] + [""]
+            points_headers = ["", ""] + ["(3)", "(3)", "(4)", "(3)", "(4)", "(7)", "(5)", "(7)", "(6)", "(8)", "", "(4)", "(3)", "(3)", "(7)", "(3)", "(5)", "(7)", "(6)", "(4)", "(8)"] + [""]
+            num_empty_cols = 21
+            col_widths = [12*mm, 35*mm] + [9*mm] * 21 + [15*mm]
+            return [main_headers, sub_headers, points_headers], num_empty_cols, col_widths
+        elif event == "TAPIR":
+            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            num_empty_cols = 5
+            col_widths = [12*mm, 40*mm] + [15*mm] * 5 + [15*mm]
+            return [headers], num_empty_cols, col_widths
+        elif event == "TIMED":
+            headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
+            num_empty_cols = 2
+            col_widths = [12*mm, 40*mm] + [40*mm] * 2 + [40*mm]
+            return [headers], num_empty_cols, col_widths
+        else:
+            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            num_empty_cols = 10
+            col_widths = [12*mm, 30*mm] + [12*mm] * 10 + [15*mm]
+            return [headers], num_empty_cols, col_widths
+
+    def _distribute_entries_to_circles(self, participant_order: list[str], num_circles: int, sort_method: str):
+        """Distribute participants into circles."""
+        circles_data = [[] for _ in range(num_circles)]
+
+        if sort_method == "Rank":
+            # Cyclic distribution for rank-based sorting
+            for idx, p_id in enumerate(participant_order):
+                circle_idx = idx % num_circles
+                circles_data[circle_idx].append(p_id)
+        else:
+            # Sequential distribution for startnr-based sorting
+            total_entries = len(participant_order)
+            entries_per_circle = max(1, (total_entries + num_circles - 1) // num_circles)
+            for idx, p_id in enumerate(participant_order):
+                circle_idx = idx // entries_per_circle
+                if circle_idx >= num_circles:
+                    circle_idx = num_circles - 1
+                circles_data[circle_idx].append(p_id)
+
+        return circles_data
+
+    def _export_scoresheet_pdf(self, filename, event, circles_data, header_rows, num_empty_cols, col_widths):
+        """Export scoresheet to PDF using ReportLab."""
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+
+        doc = SimpleDocTemplate(
+            filename,
+            pagesize=landscape(A4),
+            leftMargin=10*mm,
+            rightMargin=10*mm,
+            topMargin=10*mm,
+            bottomMargin=10*mm,
+        )
+
+        styles = getSampleStyleSheet()
+        story = []
+        title_text = self.competition.title or "Competition"
+
+        for circle_idx, circle_p_ids in enumerate(circles_data, 1):
+            if not circle_p_ids:
+                continue
+            if circle_idx > 1:
+                story.append(PageBreak())
+
+            story.append(Paragraph(f"{title_text} - {event} - Circle {circle_idx}", styles["Title"]))
+            story.append(Spacer(1, 6))
+
+            table_data = [list(r) for r in header_rows]
+
+            for p_id in circle_p_ids:
+                participant = self.competition.get_participant(p_id)
+                if not participant:
+                    continue
+                row_vals = [str(participant.startnumber), participant.name]
+                row_vals.extend([""] * (num_empty_cols + 1))
+                table_data.append(row_vals)
+
+            tbl = Table(table_data, colWidths=col_widths, repeatRows=len(header_rows))
+            tbl.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, len(header_rows)-1), colors.HexColor("#d3d3d3")),
+                ("TEXTCOLOR", (0, 0), (-1, len(header_rows)-1), colors.black),
+                ("ALIGN", (0, 0), (-1, len(header_rows)-1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, len(header_rows)-1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, len(header_rows)-1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                ("FONTNAME", (0, len(header_rows)), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, len(header_rows)), (-1, -1), 7),
+                ("ALIGN", (0, len(header_rows)), (0, -1), "CENTER"),
+                ("ALIGN", (1, len(header_rows)), (1, -1), "LEFT"),
+                ("ALIGN", (2, len(header_rows)), (-1, -1), "CENTER"),
+                ("ROWBACKGROUNDS", (0, len(header_rows)), (-1, -1), [colors.whitesmoke, colors.white]),
+            ]))
+            story.append(tbl)
+
+        doc.build(story)
+
+    def _export_scoresheet_docx(self, filename, event, circles_data, header_rows, col_widths):
+        """Export scoresheet to DOCX."""
+        from docx import Document
+        from docx.shared import Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.section import WD_ORIENT
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+
+        doc = Document()
+        section = doc.sections[0]
+        section.orientation = WD_ORIENT.LANDSCAPE
+        section.page_width, section.page_height = section.page_height, section.page_width
+
+        def set_cell_background(cell, fill):
+            shading_elm = OxmlElement('w:shd')
+            shading_elm.set(qn('w:fill'), fill)
+            cell._element.get_or_add_tcPr().append(shading_elm)
+
+        title_text = self.competition.title or "Competition"
+        num_cols = len(header_rows[-1])
+
+        for circle_idx, circle_p_ids in enumerate(circles_data, 1):
+            if not circle_p_ids:
+                continue
+            if circle_idx > 1:
+                doc.add_page_break()
+
+            heading = doc.add_heading(f"{title_text} - {event} - Circle {circle_idx}", level=1)
+            heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            table = doc.add_table(rows=len(header_rows), cols=num_cols)
+            table.style = "Table Grid"
+            table.alignment = WD_TABLE_ALIGNMENT.CENTER
+
+            for r_idx, header_row in enumerate(header_rows):
+                hdr_cells = table.rows[r_idx].cells
+                for c_idx, text in enumerate(header_row):
+                    hdr_cells[c_idx].text = text
+                    set_cell_background(hdr_cells[c_idx], "D3D3D3")
+                    for p in hdr_cells[c_idx].paragraphs:
+                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in p.runs:
+                            run.font.bold = True
+                            run.font.size = Pt(9)
+
+            for p_id in circle_p_ids:
+                participant = self.competition.get_participant(p_id)
+                if not participant:
+                    continue
+                row_cells = table.add_row().cells
+                row_cells[0].text = str(participant.startnumber)
+                row_cells[1].text = participant.name
+                for i in range(2, num_cols):
+                    row_cells[i].text = ""
+
+                for i, cell in enumerate(row_cells):
+                    for p in cell.paragraphs:
+                        if i == 0 or i == num_cols - 1:
+                            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        elif i == 1:
+                            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                        else:
+                            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        doc.save(filename)
 
     def _export_individual_pdf(self, filename: str, participant_order: list[str],
                                logo_path: Optional[str]):
@@ -244,7 +580,11 @@ class ExportService:
         title_text = self.competition.title or "Competition"
 
         for idx, participant_id in enumerate(participant_order):
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
@@ -337,7 +677,11 @@ class ExportService:
         title_text = self.competition.title or "Competition"
 
         for idx, participant_id in enumerate(participant_order):
-            participant = self.competition.get_participant(participant_id)
+            try:
+                pid = int(participant_id)
+            except (ValueError, TypeError):
+                continue
+            participant = self.competition.get_participant(pid)
             if not participant:
                 continue
 
