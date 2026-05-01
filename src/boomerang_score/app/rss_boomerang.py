@@ -109,6 +109,10 @@ class ScoreTableApp(tk.Tk):
 
     def _build_ui(self):
         """Build the main UI layout."""
+        # Status bar — packed first so it occupies the absolute bottom of the window
+        self.status_bar = tk.Label(self, anchor="w", padx=10, pady=3, font=self.font_main)
+        self.status_bar.pack(side="bottom", fill="x")
+
         # Main Canvas with scrollbars for the whole window
         self.main_canvas = tk.Canvas(self, highlightthickness=0)
 
@@ -228,6 +232,9 @@ class ScoreTableApp(tk.Tk):
         self.bind("<KP_Enter>", lambda e: self.table_view.commit_inline_edit())
         self.bind("<Escape>", lambda e: self.table_view.cancel_inline_edit())
 
+        # Initialise status bar
+        self._update_window_title()
+
     def on_choose_logo(self):
         """Handle logo file selection."""
         path = filedialog.askopenfilename(
@@ -283,8 +290,16 @@ class ScoreTableApp(tk.Tk):
     def _update_window_title(self):
         if self._current_file:
             self.title(f"Scoring Table – {os.path.basename(self._current_file)}")
+            self.status_bar.config(
+                text=f"Auto-saving to: {os.path.basename(self._current_file)}",
+                bg="#D4EDDA", fg="#155724",
+            )
         else:
             self.title("Scoring Table – Dynamic Disciplines")
+            self.status_bar.config(
+                text="No file open – use File → Save As to enable auto-save",
+                bg="#FFF3CD", fg="#856404",
+            )
 
     def file_new(self):
         """Clear all data and start a fresh competition."""
