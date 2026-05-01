@@ -1,10 +1,10 @@
-import io
 import os
 import tempfile
 import unittest
 
 from boomerang_score.core.models import Competition, Participant
 from boomerang_score.services.export_service import ExportService
+from boomerang_score.services.persistence import CompetitionRepository
 
 
 class MockDisc:
@@ -182,6 +182,96 @@ class TestMissingDisciplineResults(unittest.TestCase):
         )
         self.assertEqual(alice_row.get("acc res", "").strip(), "25")
         self.assertEqual(alice_row.get("aus res", "").strip(), "90")
+
+
+class TestCompetitionRepository(unittest.TestCase):
+    """CompetitionRepository must round-trip all Competition state through JSON."""
+
+    def setUp(self):
+        self.repo = CompetitionRepository()
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".bscore", delete=False)
+        self.tmp.close()
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def test_full_roundtrip(self):
+        comp = _make_competition()
+        comp.set_active_disciplines({"acc", "aus"})
+        comp.logo_path = "/some/logo.png"
+
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        self.assertEqual(loaded.title, "Spring Open 2025")
+        self.assertEqual(loaded.logo_path, "/some/logo.png")
+        self.assertEqual(loaded.active_disciplines, {"acc", "aus"})
+        self.assertEqual(len(loaded.participants), 2)
+
+    def test_participant_results_preserved(self):
+        comp = _make_competition()
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        alice = loaded.get_participant(3)
+        self.assertIsNotNone(alice)
+        self.assertEqual(alice.name, "Alice")
+        self.assertEqual(alice.get_result("acc"), 25.0)
+        self.assertEqual(alice.get_result("aus"), 90.0)
+        self.assertEqual(alice.total_points, 500.0)
+        self.assertEqual(alice.overall_rank, 1)
+
+    def test_missing_discipline_result_stays_none(self):
+        comp = _make_competition()
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        bob = loaded.get_participant(7)
+        self.assertIsNotNone(bob)
+        self.assertIsNone(bob.get_result("aus"), "Bob has no AUS result — should remain None")
+        self.assertEqual(bob.get_result("acc"), 18.0)
+
+    def test_empty_competition_roundtrip(self):
+        comp = Competition(title="Empty")
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        self.assertEqual(loaded.title, "Empty")
+        self.assertIsNone(loaded.logo_path)
+        self.assertEqual(len(loaded.participants), 0)
+        self.assertEqual(loaded.active_disciplines, set())
+
+    def test_missing_optional_fields_tolerated(self):
+        import json
+        with open(self.tmp.name, "w", encoding="utf-8") as f:
+            json.dump({"participants": {}}, f)
+
+        loaded = self.repo.load(self.tmp.name)
+        self.assertEqual(loaded.title, "My Competition")
+        self.assertIsNone(loaded.logo_path)
+
+    def test_total_points_and_rank_preserved(self):
+        comp = _make_competition()
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        bob = loaded.get_participant(7)
+        self.assertEqual(bob.total_points, 300.0)
+        self.assertEqual(bob.overall_rank, 2)
+
+    def test_active_disciplines_roundtrip(self):
+        comp = Competition(title="Disc Test")
+        comp.set_active_disciplines({"acc", "mta", "tc"})
+        self.repo.save(comp, self.tmp.name)
+        loaded = self.repo.load(self.tmp.name)
+
+        self.assertEqual(loaded.active_disciplines, {"acc", "mta", "tc"})
+
+    def test_bad_file_raises_value_error(self):
+        with open(self.tmp.name, "w", encoding="utf-8") as f:
+            f.write("not valid json {{{")
+        with self.assertRaises(ValueError):
+            self.repo.load(self.tmp.name)
 
 
 if __name__ == "__main__":
