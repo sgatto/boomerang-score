@@ -117,9 +117,9 @@ class ExportService:
 
         try:
             self.export_csv(filename, all_columns, column_headers, participant_order, include_header=True)
-        except Exception:
-            # Silent failure for auto-save as in original code
-            pass
+        except Exception as e:
+            import sys
+            print(f"Auto-save failed ({filename}): {e}", file=sys.stderr)
 
     def load_csv(self, filename: str) -> dict:
         """
@@ -138,22 +138,25 @@ class ExportService:
         except Exception as e:
             raise ValueError(f"Could not read CSV file: {e}")
 
-        if len(rows) < 4:
-            raise ValueError("CSV file is too short or has invalid format.")
+        if not rows:
+            raise ValueError("CSV file is empty.")
 
         title = "My Competition"
-        if len(rows[0]) >= 2 and rows[0][0] == "Titel":
-            title = rows[0][1]
+        header_row_idx = 0
 
-        # Row 1: Date (ignored)
-        # Row 2: Empty (ignored)
-        # Row 3: Headers
-        headers = rows[3]
+        if len(rows[0]) >= 2 and rows[0][0] == "Titel":
+            # Format exported with include_header=True: title row, date row, empty row, then column headers
+            if len(rows) < 4:
+                raise ValueError("CSV file is too short or has invalid format.")
+            title = rows[0][1]
+            header_row_idx = 3
+
+        headers = rows[header_row_idx]
         if not headers:
             raise ValueError("CSV file is missing headers.")
 
         participants_data = []
-        for row in rows[4:]:
+        for row in rows[header_row_idx + 1:]:
             if row:
                 participants_data.append(dict(zip(headers, row)))
 

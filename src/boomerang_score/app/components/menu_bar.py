@@ -12,7 +12,7 @@ class MenuBar:
     (column management).
     """
 
-    def __init__(self, root, export_service, table_view, competition):
+    def __init__(self, root, export_service, table_view, competition, file_callbacks=None):
         """
         Initialize the menu bar.
 
@@ -21,17 +21,28 @@ class MenuBar:
             export_service: ExportService instance
             table_view: ParticipantTableView instance
             competition: Competition instance
+            file_callbacks: Dict with keys "new", "open", "save", "save_as" → callables
         """
         self.root = root
         self.export_service = export_service
         self.table_view = table_view
         self.competition = competition
+        self.file_callbacks = file_callbacks or {}
 
         self.menubar = tk.Menu(root)
         root.config(menu=self.menubar)
 
     def build(self):
         """Build the menu bar."""
+        # File menu
+        file_menu = tk.Menu(self.menubar, tearoff=False)
+        self.menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="New",      command=self.file_callbacks.get("new",     lambda: None))
+        file_menu.add_command(label="Open…",    command=self.file_callbacks.get("open",    lambda: None))
+        file_menu.add_separator()
+        file_menu.add_command(label="Save",     command=self.file_callbacks.get("save",    lambda: None))
+        file_menu.add_command(label="Save As…", command=self.file_callbacks.get("save_as", lambda: None))
+
         # View menu
         view_menu = tk.Menu(self.menubar, tearoff=False)
         self.menubar.add_cascade(label="View", menu=view_menu)

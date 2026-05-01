@@ -18,7 +18,7 @@ if sys.platform.startswith("linux"):
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
 
 from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
-from boomerang_score.services import CompetitionService, ExportService
+from boomerang_score.services import CompetitionService, ExportService, CompetitionRepository
 from boomerang_score.app.adapter import LegacyDataAdapter
 from boomerang_score.app.components import ParticipantTableView, InputPanel, DisciplinePanel, MenuBar
 
@@ -65,6 +65,8 @@ class ScoreTableApp(tk.Tk):
         self.competition = Competition()
         self.service = CompetitionService(self.competition, DISCIPLINES)
         self.export_service = ExportService(self.competition, DISCIPLINES)
+        self.repository = CompetitionRepository()
+        self._current_file: str | None = None
 
         # Legacy adapter
         self.data = LegacyDataAdapter(self.competition, self.service)
@@ -107,6 +109,10 @@ class ScoreTableApp(tk.Tk):
 
     def _build_ui(self):
         """Build the main UI layout."""
+        # Status bar — packed first so it occupies the absolute bottom of the window
+        self.status_bar = tk.Label(self, anchor="w", padx=10, pady=3, font=self.font_main)
+        self.status_bar.pack(side="bottom", fill="x")
+
         # Main Canvas with scrollbars for the whole window
         self.main_canvas = tk.Canvas(self, highlightthickness=0)
 
@@ -141,7 +147,14 @@ class ScoreTableApp(tk.Tk):
         self.main_canvas.bind_all("<Button-5>", _on_mousewheel)
 
         # Menu bar
-        self.menu_bar = MenuBar(self, self.export_service, None, self.competition)
+        file_callbacks = {
+            "new":     self.file_new,
+            "open":    self.file_open,
+            "save":    self.file_save,
+            "save_as": self.file_save_as,
+        }
+        self.menu_bar = MenuBar(self, self.export_service, None, self.competition,
+                                file_callbacks=file_callbacks)
 
         # Title + Logo section
         frm_title = ttk.Frame(self.main_frame, padding=(10, 6))
@@ -219,6 +232,9 @@ class ScoreTableApp(tk.Tk):
         self.bind("<KP_Enter>", lambda e: self.table_view.commit_inline_edit())
         self.bind("<Escape>", lambda e: self.table_view.cancel_inline_edit())
 
+        # Initialise status bar
+        self._update_window_title()
+
     def on_choose_logo(self):
         """Handle logo file selection."""
         path = filedialog.askopenfilename(
@@ -230,12 +246,13 @@ class ScoreTableApp(tk.Tk):
             self.lbl_logo_name.config(text=os.path.basename(path))
 
     def _on_data_changed(self):
-        """Handle data changes by triggering auto-save."""
-        all_cols = self.table_view.all_columns
-        headers = self.table_view.column_headers
-        # We might want to save in the order currently displayed in the tree
-        participant_order = list(self.table_view.tree.get_children())
-        self.export_service.auto_save(all_cols, headers, participant_order)
+        """Auto-save to the currently open .bscore file, if one is set."""
+        if self._current_file:
+            try:
+                self.repository.save(self.competition, self._current_file)
+            except Exception as e:
+                import sys
+                print(f"Auto-save failed ({self._current_file}): {e}", file=sys.stderr)
 
     def _on_toggle_disciplines(self):
         """Handle discipline checkbox toggle."""
@@ -269,6 +286,98 @@ class ScoreTableApp(tk.Tk):
         except ValueError as e:
             messagebox.showerror("Error", str(e))
             return False
+
+    def _update_window_title(self):
+        if self._current_file:
+            self.title(f"Scoring Table – {os.path.basename(self._current_file)}")
+            light_green = "#D4EDDA"
+            dark_green = "#155724"
+            self.status_bar.config(
+                text=f"Auto-saving to: {os.path.basename(self._current_file)}",
+                bg=light_green, fg=dark_green,
+            )
+        else:
+            self.title("Scoring Table – Dynamic Disciplines")
+            light_amber = "#FFF3CD"
+            dark_amber = "#856404"
+            self.status_bar.config(
+                text="No file open – use File → Save As to enable auto-save",
+                bg=light_amber, fg=dark_amber,
+            )
+
+    def file_new(self):
+        """Clear all data and start a fresh competition."""
+        self.service.clear_all_data()
+        self._current_file = None
+        self.ent_title.delete(0, tk.END)
+        self.ent_title.insert(0, self.competition.title)
+        self.lbl_title_display.config(text=self.competition.title)
+        self.lbl_logo_name.config(text="(no logo selected)")
+        for d in DISCIPLINES:
+            self.disc_state[d.code].set(d.default_active)
+        self._on_toggle_disciplines()
+        self._update_window_title()
+
+    def file_open(self):
+        """Open a .bscore file and replace the current competition."""
+        path = filedialog.askopenfilename(
+            title="Open Competition",
+            filetypes=[("Boomerang Score", "*.bscore"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            loaded = self.repository.load(path)
+            # Mutate in-place so CompetitionService/ExportService references stay valid
+            self.competition.title = loaded.title
+            self.competition.logo_path = loaded.logo_path
+            self.competition.participants = loaded.participants
+            self.competition.set_active_disciplines(loaded.active_disciplines)
+            # Sync UI
+            self.ent_title.delete(0, tk.END)
+            self.ent_title.insert(0, self.competition.title)
+            self.lbl_title_display.config(text=self.competition.title)
+            logo_name = (os.path.basename(self.competition.logo_path)
+                         if self.competition.logo_path else "(no logo selected)")
+            self.lbl_logo_name.config(text=logo_name)
+            for d in DISCIPLINES:
+                self.disc_state[d.code].set(d.code in self.competition.active_disciplines)
+            self.input_panel.rebuild_discipline_inputs()
+            self.table_view.build()
+            for startnr in self.data.keys():
+                self.table_view.tree.insert("", "end", iid=str(startnr),
+                                            values=[""] * len(self.table_view.all_columns))
+            self.table_view.update_all_rows()
+            self._current_file = path
+            self._update_window_title()
+        except Exception as e:
+            messagebox.showerror("Open Error", f"Could not open file:\n{e}")
+
+    def file_save(self):
+        """Save to the current file; runs Save As if no file is set."""
+        if not self._current_file:
+            self.file_save_as()
+            return
+        try:
+            self.repository.save(self.competition, self._current_file)
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Could not save file:\n{e}")
+
+    def file_save_as(self):
+        """Prompt for a path and save the competition there."""
+        path = filedialog.asksaveasfilename(
+            title="Save Competition",
+            defaultextension=".bscore",
+            filetypes=[("Boomerang Score", "*.bscore"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            self.repository.save(self.competition, path)
+            self._current_file = path
+            self._update_window_title()
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Could not save file:\n{e}")
 
     def load_csv(self):
         """Load competition from CSV file."""
@@ -312,7 +421,7 @@ class ScoreTableApp(tk.Tk):
 
                 # Find startnumber
                 startnr = None
-                for k in ["startnummer", "startnr", "start", "startnr."]:
+                for k in ["startnummer", "startnr", "start no.", "start no", "start", "startnr.", "startnumber"]:
                     if k in normalized_row and normalized_row[k].strip():
                         try:
                             startnr = int(float(normalized_row[k].strip()))
@@ -344,8 +453,6 @@ class ScoreTableApp(tk.Tk):
                     if res_val is not None:
                         disc_results[d.code] = res_val
                         disciplines_with_data.add(d.code)
-                    else:
-                        disc_results[d.code] = 0.0
 
                 self.service.add_participant(name, startnr, disc_results)
 
@@ -358,6 +465,8 @@ class ScoreTableApp(tk.Tk):
             # Refresh UI
             self.input_panel.rebuild_discipline_inputs()
             self.table_view.build()
+            for startnr in self.data.keys():
+                self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
             
             messagebox.showinfo("Load Successful", f"Loaded competition: {self.competition.title}")
