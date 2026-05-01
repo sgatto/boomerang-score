@@ -312,7 +312,7 @@ class ScoreTableApp(tk.Tk):
 
                 # Find startnumber
                 startnr = None
-                for k in ["startnummer", "startnr", "start", "startnr."]:
+                for k in ["startnummer", "startnr", "start no.", "start no", "start", "startnr.", "startnumber"]:
                     if k in normalized_row and normalized_row[k].strip():
                         try:
                             startnr = int(float(normalized_row[k].strip()))
@@ -344,8 +344,6 @@ class ScoreTableApp(tk.Tk):
                     if res_val is not None:
                         disc_results[d.code] = res_val
                         disciplines_with_data.add(d.code)
-                    else:
-                        disc_results[d.code] = 0.0
 
                 self.service.add_participant(name, startnr, disc_results)
 
@@ -358,6 +356,8 @@ class ScoreTableApp(tk.Tk):
             # Refresh UI
             self.input_panel.rebuild_discipline_inputs()
             self.table_view.build()
+            for startnr in self.data.keys():
+                self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
             
             messagebox.showinfo("Load Successful", f"Loaded competition: {self.competition.title}")
