@@ -12,7 +12,7 @@ class InputPanel:
     for each active discipline, along with an add button.
     """
 
-    def __init__(self, parent, disciplines, disc_state, service, data, competition, fonts):
+    def __init__(self, parent, disciplines, disc_state, service, competition, fonts):
         """
         Initialize the input panel.
 
@@ -21,7 +21,6 @@ class InputPanel:
             disciplines: List of Discipline objects
             disc_state: Dict of discipline code -> BooleanVar for active state
             service: CompetitionService instance
-            data: LegacyDataAdapter for participant data
             competition: Competition instance
             fonts: Dict with 'main' and 'bold' fonts
         """
@@ -29,7 +28,6 @@ class InputPanel:
         self.disciplines = disciplines
         self.disc_state = disc_state
         self.service = service
-        self.data = data
         self.competition = competition
         self.fonts = fonts
 

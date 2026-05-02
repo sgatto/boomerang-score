@@ -19,7 +19,6 @@ if sys.platform.startswith("linux"):
 
 from boomerang_score.core import Competition, Participant, ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
 from boomerang_score.services import CompetitionService, ExportService, CompetitionRepository
-from boomerang_score.app.adapter import LegacyDataAdapter
 from boomerang_score.app.components import ParticipantTableView, InputPanel, DisciplinePanel, MenuBar
 
 import tkinter as tk
@@ -67,9 +66,6 @@ class ScoreTableApp(tk.Tk):
         self.export_service = ExportService(self.competition, DISCIPLINES)
         self.repository = CompetitionRepository()
         self._current_file: str | None = None
-
-        # Legacy adapter
-        self.data = LegacyDataAdapter(self.competition, self.service)
 
         # Discipline state
         self.disc_state = {d.code: tk.BooleanVar(value=d.default_active) for d in DISCIPLINES}
@@ -186,7 +182,7 @@ class ScoreTableApp(tk.Tk):
 
         # Input Panel
         self.input_panel = InputPanel(self.main_frame, DISCIPLINES, self.disc_state, self.service,
-                                      self.data, self.competition, fonts)
+                                      self.competition, fonts)
         self.input_panel.build()
         self.input_panel.set_add_callback(self._on_add_participant)
         self.input_panel.set_delete_callback(lambda: self.table_view._on_delete_selected())
@@ -218,7 +214,7 @@ class ScoreTableApp(tk.Tk):
 
         # Table View
         self.table_view = ParticipantTableView(self.main_frame, DISCIPLINES, self.disc_state,
-                                              self.data, self.service, fonts)
+                                              self.competition, self.service, fonts)
         self.table_view.build()
         self.table_view.set_data_changed_callback(self._on_data_changed)
         self.table_view.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -265,7 +261,7 @@ class ScoreTableApp(tk.Tk):
         self.table_view.build()
 
         # Re-insert existing data
-        for startnr in self.data.keys():
+        for startnr in self.competition.participants:
             self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_row(str(startnr))
         
@@ -344,7 +340,7 @@ class ScoreTableApp(tk.Tk):
                 self.disc_state[d.code].set(d.code in self.competition.active_disciplines)
             self.input_panel.rebuild_discipline_inputs()
             self.table_view.build()
-            for startnr in self.data.keys():
+            for startnr in self.competition.participants:
                 self.table_view.tree.insert("", "end", iid=str(startnr),
                                             values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
@@ -465,7 +461,7 @@ class ScoreTableApp(tk.Tk):
             # Refresh UI
             self.input_panel.rebuild_discipline_inputs()
             self.table_view.build()
-            for startnr in self.data.keys():
+            for startnr in self.competition.participants:
                 self.table_view.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.table_view.all_columns))
             self.table_view.update_all_rows()
             
@@ -511,7 +507,7 @@ class ScoreTableApp(tk.Tk):
 
     def export_individual_reports(self):
         """Export individual participant reports."""
-        if not self.data:
+        if not self.competition.participants:
             messagebox.showwarning("No Data", "There are no participants.")
             return
 
@@ -525,8 +521,8 @@ class ScoreTableApp(tk.Tk):
 
         try:
             participant_order = sorted(
-                self.data.keys(),
-                key=lambda pid: (self.data[pid].get("overall_rank") or 10**9, self.data[pid].get("name") or "")
+                self.competition.participants,
+                key=lambda pid: (self.competition.participants[pid].overall_rank or 10**9, self.competition.participants[pid].name)
             )
             self.export_service.export_individual_reports(out_file, participant_order, self.competition.logo_path)
             messagebox.showinfo("Export Successful", f"Report saved:\n{out_file}")
@@ -535,7 +531,7 @@ class ScoreTableApp(tk.Tk):
 
     def export_scoresheet(self):
         """Export scoresheet for a specific event."""
-        if not self.data:
+        if not self.competition.participants:
             messagebox.showwarning("No Data", "There are no participants.")
             return
 
@@ -563,13 +559,13 @@ class ScoreTableApp(tk.Tk):
         # Prepare participant order based on sort method
         if sort_method == "Rank":
             participant_order = sorted(
-                self.data.keys(),
-                key=lambda pid: (self.data[pid].get("overall_rank") or 10**9, self.data[pid].get("name") or "")
+                self.competition.participants,
+                key=lambda pid: (self.competition.participants[pid].overall_rank or 10**9, self.competition.participants[pid].name)
             )
         else:
             participant_order = sorted(
-                self.data.keys(),
-                key=lambda pid: (int(self.data[pid].get("startnummer") or 999), self.data[pid].get("name") or "")
+                self.competition.participants,
+                key=lambda pid: (self.competition.participants[pid].startnumber, self.competition.participants[pid].name)
             )
 
         try:

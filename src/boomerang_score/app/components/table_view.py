@@ -14,7 +14,7 @@ class ParticipantTableView:
     """
 
     def __init__(self, parent: tk.Widget, disciplines: list, disc_state: Dict[str, tk.BooleanVar],
-                 data: Any, service: Any, fonts: Dict[str, tkfont.Font]) -> None:
+                 competition: Any, service: Any, fonts: Dict[str, tkfont.Font]) -> None:
         """
         Initialize the participant table view.
 
@@ -22,14 +22,14 @@ class ParticipantTableView:
             parent: Parent widget
             disciplines: List of Discipline objects
             disc_state: Dict of discipline code -> BooleanVar for active state
-            data: LegacyDataAdapter for participant data
+            competition: Competition instance
             service: CompetitionService instance
             fonts: Dict with 'main' and 'bold' fonts
         """
         self.parent = parent
         self.disciplines = disciplines
         self.disc_state = disc_state
-        self.data = data
+        self.competition = competition
         self.service = service
         self.fonts = fonts
 
@@ -162,36 +162,41 @@ class ParticipantTableView:
             
     def refresh_from_data(self) -> None:
         """Refresh the whole table from current data."""
-        # Clear existing rows
         for item in self.tree.get_children():
             self.tree.delete(item)
-            
-        # Re-insert all rows
-        for startnr in self.data.keys():
+
+        for startnr in self.competition.participants:
             self.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.all_columns))
             self.update_row(str(startnr))
-            
+
         self._notify_data_changed()
 
     def update_row(self, iid: str) -> None:
         """Update display of a single row (iid is string startnumber)."""
-        startnr = int(iid)  # Convert tree ID to startnumber
-        row = self.data[startnr]
+        p = self.competition.participants[int(iid)]
         values = []
         for col in self.all_columns:
             if col == "name":
-                values.append(row["name"])
-            elif col in ("startnumber", "total", "overall_rank"):
-                values.append(self._format_number(row.get(col)))
-            elif col.endswith("_res") or col.endswith("_pts") or col.endswith("_rank"):
-                values.append(self._format_number(row.get(col)))
+                values.append(p.name)
+            elif col == "startnumber":
+                values.append(self._format_number(p.startnumber))
+            elif col == "total":
+                values.append(self._format_number(p.total_points))
+            elif col == "overall_rank":
+                values.append(self._format_number(p.overall_rank))
+            elif col.endswith("_res"):
+                values.append(self._format_number(p.get_result(col[:-4])))
+            elif col.endswith("_pts"):
+                values.append(self._format_number(p.get_points(col[:-4])))
+            elif col.endswith("_rank"):
+                values.append(self._format_number(p.get_rank(col[:-5])))
             else:
                 values.append("")
         self.tree.item(iid, values=values)
 
     def update_all_rows(self) -> None:
         """Update display of all rows."""
-        for startnr in self.data.keys():
+        for startnr in self.competition.participants:
             self.update_row(str(startnr))
 
     def insert_row(self, values):
@@ -226,7 +231,7 @@ class ParticipantTableView:
         startnr = int(iid)
 
         from tkinter import messagebox
-        if not messagebox.askyesno("Confirm Delete", f"Delete participant '{self.data[startnr]['name']}' (Start No. {startnr})?"):
+        if not messagebox.askyesno("Confirm Delete", f"Delete participant '{self.competition.participants[startnr].name}' (Start No. {startnr})?"):
             return
 
         try:
@@ -374,9 +379,24 @@ class ParticipantTableView:
 
     def _apply_sort(self, col, ascending=True):
         """Apply sorting to the tree."""
-        def get_val(iid):
-            row = self.data[iid]
-            v = row.get(col)
+        def get_val(startnr):
+            p = self.competition.participants[startnr]
+            if col == "name":
+                v = p.name
+            elif col == "startnumber":
+                v = p.startnumber
+            elif col == "total":
+                v = p.total_points
+            elif col == "overall_rank":
+                v = p.overall_rank
+            elif col.endswith("_res"):
+                v = p.get_result(col[:-4])
+            elif col.endswith("_pts"):
+                v = p.get_points(col[:-4])
+            elif col.endswith("_rank"):
+                v = p.get_rank(col[:-5])
+            else:
+                v = None
             if v is None:
                 return (1, 0) if ascending else (0, float('inf'))
             if col in self.numeric_columns:
@@ -386,11 +406,11 @@ class ParticipantTableView:
                     return (1, 0) if ascending else (0, float('inf'))
             return (0, str(v))
 
-        items = [(iid, get_val(iid)) for iid in self.data.keys()]
+        items = [(startnr, get_val(startnr)) for startnr in self.competition.participants]
         items.sort(key=lambda x: x[1], reverse=not ascending)
 
-        for index, (iid, _) in enumerate(items):
-            self.tree.move(iid, "", index)
+        for index, (startnr, _) in enumerate(items):
+            self.tree.move(str(startnr), "", index)
 
     def _parse_float(self, s, allow_empty=True):
         """Parse string to float."""
