@@ -24,7 +24,11 @@ class TestAddParticipant:
     """Tests for adding participants."""
 
     def test_add_participant(self, service, competition):
-        participant = service.add_participant("John Doe", 1, {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0})
+        service.add_participant(
+            "John Doe",
+            1,
+            {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0},
+        )
 
         assert len(competition.participants) == 1
         p = competition.get_participant(1)
@@ -47,7 +51,9 @@ class TestAddParticipant:
         assert p.total_points is not None
         assert p.total_points > 0
 
-    def test_add_participant_with_duplicate_startnumber_raises_error(self, service, competition):
+    def test_add_participant_with_duplicate_startnumber_raises_error(
+        self, service, competition
+    ):
         service.add_participant("John", 1, {})
 
         with pytest.raises(ValueError, match="already assigned"):
@@ -55,8 +61,10 @@ class TestAddParticipant:
 
     def test_add_multiple_participants_calculates_ranks(self, service, competition):
         service.add_participant("John", 1, {DISC_CODE_ACC: 50.0})
-        service.add_participant("Jane", 2, {DISC_CODE_ACC: 75.0})  # Better score (higher)
-        service.add_participant("Bob", 3, {DISC_CODE_ACC: 40.0})   # Worse score (lower)
+        service.add_participant(
+            "Jane", 2, {DISC_CODE_ACC: 75.0}
+        )  # Better score (higher)
+        service.add_participant("Bob", 3, {DISC_CODE_ACC: 40.0})  # Worse score (lower)
 
         p1 = competition.get_participant(1)
         p2 = competition.get_participant(2)
@@ -168,9 +176,13 @@ class TestActiveDisciplines:
         service.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS})
         assert competition.active_disciplines == {DISC_CODE_ACC, DISC_CODE_AUS}
 
-    def test_changing_active_disciplines_recalculates_totals(self, service, competition):
+    def test_changing_active_disciplines_recalculates_totals(
+        self, service, competition
+    ):
         # Add participant with results in all disciplines
-        service.add_participant("John", 1, {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0})
+        service.add_participant(
+            "John", 1, {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0}
+        )
 
         p = competition.get_participant(1)
         total_with_all = p.total_points
@@ -182,7 +194,9 @@ class TestActiveDisciplines:
         assert total_without_mta < total_with_all
 
     def test_inactive_disciplines_have_no_rank(self, service, competition):
-        service.add_participant("John", 1, {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0})
+        service.add_participant(
+            "John", 1, {DISC_CODE_ACC: 50.0, DISC_CODE_AUS: 90.0, DISC_CODE_MTA: 30.0}
+        )
 
         # Deactivate aus
         service.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_MTA})

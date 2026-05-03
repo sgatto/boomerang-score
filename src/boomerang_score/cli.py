@@ -8,12 +8,24 @@ and export reports without needing the GUI.
 
 import sys
 import argparse
-import csv
 from pathlib import Path
 from boomerang_score.core import (
-    Competition, ACC, AUS, MTA, END, FC, TC, TIMED,
-    DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA, DISC_CODE_END,
-    DISC_CODE_FC, DISC_CODE_TC, DISC_CODE_TIMED, ALL_DISCIPLINE_CODES
+    Competition,
+    ACC,
+    AUS,
+    MTA,
+    END,
+    FC,
+    TC,
+    TIMED,
+    DISC_CODE_ACC,
+    DISC_CODE_AUS,
+    DISC_CODE_MTA,
+    DISC_CODE_END,
+    DISC_CODE_FC,
+    DISC_CODE_TC,
+    DISC_CODE_TIMED,
+    ALL_DISCIPLINE_CODES,
 )
 from boomerang_score.services import CompetitionService, ExportService
 
@@ -24,7 +36,7 @@ def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(
         description="Boomerang Scoring CLI",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -32,9 +44,13 @@ def create_parser() -> argparse.ArgumentParser:
     # Add participant command
     add_parser = subparsers.add_parser("add", help="Add a participant")
     add_parser.add_argument("name", help="Participant name")
-    add_parser.add_argument("--startnumber", type=int, help="Start number (auto if not specified)")
+    add_parser.add_argument(
+        "--startnumber", type=int, help="Start number (auto if not specified)"
+    )
     add_parser.add_argument("--acc", type=float, default=0.0, help="Accuracy result")
-    add_parser.add_argument("--aus", type=float, default=0.0, help="Aussie Round result")
+    add_parser.add_argument(
+        "--aus", type=float, default=0.0, help="Aussie Round result"
+    )
     add_parser.add_argument("--mta", type=float, default=0.0, help="MTA result")
     add_parser.add_argument("--end", type=float, default=0.0, help="Endurance result")
     add_parser.add_argument("--fc", type=float, default=0.0, help="Fast Catch result")
@@ -43,8 +59,12 @@ def create_parser() -> argparse.ArgumentParser:
 
     # List participants command
     list_parser = subparsers.add_parser("list", help="List all participants")
-    list_parser.add_argument("--sort", choices=["name", "rank", "startnumber"],
-                            default="rank", help="Sort by field")
+    list_parser.add_argument(
+        "--sort",
+        choices=["name", "rank", "startnumber"],
+        default="rank",
+        help="Sort by field",
+    )
 
     # Export commands
     export_parser = subparsers.add_parser("export", help="Export results")
@@ -53,9 +73,12 @@ def create_parser() -> argparse.ArgumentParser:
 
     # Set active disciplines
     disc_parser = subparsers.add_parser("disciplines", help="Set active disciplines")
-    disc_parser.add_argument("codes", nargs="+",
-                            choices=ALL_DISCIPLINE_CODES,
-                            help="Discipline codes to activate")
+    disc_parser.add_argument(
+        "codes",
+        nargs="+",
+        choices=ALL_DISCIPLINE_CODES,
+        help="Discipline codes to activate",
+    )
 
     return parser
 
@@ -90,12 +113,22 @@ def main() -> int:
                 DISC_CODE_TIMED: args.timed,
             }
 
-            startnr = args.startnumber if args.startnumber else competition.next_free_startnumber()
+            startnr = (
+                args.startnumber
+                if args.startnumber
+                else competition.next_free_startnumber()
+            )
 
             participant = service.add_participant(args.name, startnr, disc_results)
 
-            print(f"Added participant: {participant.name} (Start #{participant.startnumber})")
-            points_str = f"{participant.total_points:.2f}" if participant.total_points else "0.00"
+            print(
+                f"Added participant: {participant.name} (Start #{participant.startnumber})"
+            )
+            points_str = (
+                f"{participant.total_points:.2f}"
+                if participant.total_points
+                else "0.00"
+            )
             print(f"  Total Points: {points_str}")
             print(f"  Overall Rank: {participant.overall_rank or '-'}")
 
@@ -134,15 +167,19 @@ def main() -> int:
             output_path = Path(args.output)
             participant_order = sorted(
                 competition.participants.keys(),
-                key=lambda startnr: (competition.get_participant(startnr).overall_rank or 999,
-                                   competition.get_participant(startnr).name)
+                key=lambda startnr: (
+                    competition.get_participant(startnr).overall_rank or 999,
+                    competition.get_participant(startnr).name,
+                ),
             )
 
             if args.format == "csv":
                 columns = ["name", "startnumber", "total", "overall_rank"]
                 for d in DISCIPLINES:
                     if competition.is_discipline_active(d.code):
-                        columns.extend([f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"])
+                        columns.extend(
+                            [f"{d.code}_res", f"{d.code}_pts", f"{d.code}_rank"]
+                        )
 
                 headers = {
                     "name": "Name",
@@ -156,7 +193,9 @@ def main() -> int:
                         headers[f"{d.code}_pts"] = f"{d.label} Points"
                         headers[f"{d.code}_rank"] = f"{d.label} Rank"
 
-                export_service.export_csv(str(output_path), columns, headers, participant_order)
+                export_service.export_csv(
+                    str(output_path), columns, headers, participant_order
+                )
                 print(f"Exported CSV to: {output_path}")
 
             elif args.format == "pdf":

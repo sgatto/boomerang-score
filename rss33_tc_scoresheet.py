@@ -1,11 +1,10 @@
-
-
 # Vollständige Anwendung mit dynamischen Disziplinen, Inline-Edit, CSV/PDF-Export und Logo-Unterstützung.
 
 import os
 import math
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+
 
 # ==============================
 # Ranking-Hilfsfunktion
@@ -43,10 +42,11 @@ def compute_competition_ranks(items):
 # ==============================
 class Discipline:
     def __init__(self, code, label, default_active, points_func):
-        self.code = code      # 'acc'
-        self.label = label    # 'ACC'
+        self.code = code  # 'acc'
+        self.label = label  # 'ACC'
         self.default_active = default_active
         self.points_func = points_func
+
 
 def safe_div(numer, denom):
     try:
@@ -57,72 +57,77 @@ def safe_div(numer, denom):
     except (TypeError, ValueError):
         return 0.0
 
+
 def _points_100(_erg):
     max_score_100 = 100
     if _erg < 0:
-       _loc_points = -200
+        _loc_points = -200
     elif _erg < 100:
-       _loc_points = 500 * math.log10( 1 + 99 * (_erg / max_score_100))
+        _loc_points = 500 * math.log10(1 + 99 * (_erg / max_score_100))
     else:
-       _loc_points = 1000
+        _loc_points = 1000
     return _loc_points
-    
+
+
 def _points_80(_erg):
     max_score_80 = 80
     if _erg < 0:
-       _loc_points = -200
+        _loc_points = -200
     else:
-       _loc_points = 500 * math.log10( 1 + 99 * (_erg / max_score_80))
+        _loc_points = 500 * math.log10(1 + 99 * (_erg / max_score_80))
     return _loc_points
+
 
 def _points_50(_erg):
     max_score_50 = 50
     if _erg < 0:
-       _loc_points = -200
+        _loc_points = -200
     elif _erg < max_score_50:
-       _loc_points = 500 * math.log10( 1 + 99 * (_erg / max_score_50))
+        _loc_points = 500 * math.log10(1 + 99 * (_erg / max_score_50))
     else:
-       _loc_points = 1000
+        _loc_points = 1000
     return _loc_points
+
 
 def _points_fc(_erg):
     _max_time = 60.0
     if _erg == 0:
-       _loc_points = 0
+        _loc_points = 0
     elif _erg == 1:
-       _loc_points = 387.26
+        _loc_points = 387.26
     elif _erg == 2:
-       _loc_points = 518.71
+        _loc_points = 518.71
     elif _erg == 3:
-       _loc_points = 600.01
+        _loc_points = 600.01
     elif _erg == 4:
-       _loc_points = 659.03
+        _loc_points = 659.03
     elif _erg >= 75:
-       _loc_points = 659.03
+        _loc_points = 659.03
     elif _erg >= 5:
-       _loc_points = 500 * math.log10( 1 + 99 * ( 15.00/_erg))
+        _loc_points = 500 * math.log10(1 + 99 * (15.00 / _erg))
     else:
-       _loc_points = -200
+        _loc_points = -200
     return _loc_points
-    
+
+
 def _points_timed(_erg):
     _max_time = 60.0
     if _erg == 0:
-       _loc_points = 0
+        _loc_points = 0
     elif _erg == 1:
-       _loc_points = 387.26
+        _loc_points = 387.26
     elif _erg == 2:
-       _loc_points = 518.71
+        _loc_points = 518.71
     elif _erg == 3:
-       _loc_points = 600.01
+        _loc_points = 600.01
     elif _erg == 4:
-       _loc_points = 659.03
+        _loc_points = 659.03
     elif _erg >= 75:
-       _loc_points = 659.03
+        _loc_points = 659.03
     elif _erg > 5:
-       _loc_points = 500 * math.log10( 1 + 99 * safe_div( 15.00/_erg))
+        _loc_points = 500 * math.log10(1 + 99 * safe_div(15.00 / _erg))
     else:
-       _loc_points = -200
+        _loc_points = -200
     return _loc_points
 
 
@@ -132,21 +137,24 @@ def _points_tapir(_erg):
     except (TypeError, ValueError):
         return 0.0
 
+
 DISCIPLINES = [
-    Discipline("acc", "ACC",   True,  lambda e: _points_100(float(e)) ),
-    Discipline("aus", "AUS",   True,  lambda e: _points_100(float(e)) ),
-    Discipline("mta", "MTA",   True,  lambda e: _points_50(float(e)) ),
-    Discipline("end", "END",   True,  lambda e: _points_80(float(e)) ),
-    Discipline("fc",  "FC",    True,  lambda e: _points_fc(float(e)) ),
-    Discipline("tc",  "TC",    True,  lambda e: _points_100(float(e)) ),
-    Discipline("timed","TIMED",False, lambda e: _points_timed(float(e)) ),
-    Discipline("tapir","TAPIR",True,  lambda e: _points_tapir(float(e)) ),
+    Discipline("acc", "ACC", True, lambda e: _points_100(float(e))),
+    Discipline("aus", "AUS", True, lambda e: _points_100(float(e))),
+    Discipline("mta", "MTA", True, lambda e: _points_50(float(e))),
+    Discipline("end", "END", True, lambda e: _points_80(float(e))),
+    Discipline("fc", "FC", True, lambda e: _points_fc(float(e))),
+    Discipline("tc", "TC", True, lambda e: _points_100(float(e))),
+    Discipline("timed", "TIMED", False, lambda e: _points_timed(float(e))),
+    Discipline("tapir", "TAPIR", True, lambda e: _points_tapir(float(e))),
 ]
 
 # Hilfssets
 BASE_COLUMNS = ["name", "startnummer", "gesamt", "gesamtrang"]
 EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED", "TAPIR"]
 SORTED = ["StartNr", "Rank"]
+
+
 # ==============================
 # Haupt-App
 # ==============================
@@ -174,15 +182,17 @@ class ScoreTableApp(tk.Tk):
         self.data = {}
 
         # Disziplinstatus + Eingabefelder
-        self.disc_state = {d.code: tk.BooleanVar(value=d.default_active) for d in DISCIPLINES}
+        self.disc_state = {
+            d.code: tk.BooleanVar(value=d.default_active) for d in DISCIPLINES
+        }
         self.disc_entries = {}  # code -> tk.Entry (Add-Bereich)
 
         # Tree/Spalten
         self.tree = None
-        self.all_columns = []        # komplette Spaltenliste (inkl. unsichtbare)
-        self.display_columns = []    # aktuell sichtbare Spalten
+        self.all_columns = []  # komplette Spaltenliste (inkl. unsichtbare)
+        self.display_columns = []  # aktuell sichtbare Spalten
         self.column_visibility = {}  # key -> bool
-        self.sort_state = {}         # Spalte -> aufsteigend?
+        self.sort_state = {}  # Spalte -> aufsteigend?
 
         # Inline-Editor
         self._edit_entry = None
@@ -203,12 +213,18 @@ class ScoreTableApp(tk.Tk):
         self.main_canvas.pack(side="left", fill="both", expand=True)
 
         # Scrollbalken für das Hauptfenster
-        self.v_scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.main_canvas.yview)
+        self.v_scrollbar = ttk.Scrollbar(
+            self, orient="vertical", command=self.main_canvas.yview
+        )
         self.v_scrollbar.pack(side="right", fill="y")
-        self.h_scrollbar = ttk.Scrollbar(self, orient="horizontal", command=self.main_canvas.xview)
+        self.h_scrollbar = ttk.Scrollbar(
+            self, orient="horizontal", command=self.main_canvas.xview
+        )
         self.h_scrollbar.pack(side="bottom", fill="x")
 
-        self.main_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+        self.main_canvas.configure(
+            yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set
+        )
 
         # Frame im Canvas für alle Widgets
         self.main_frame = ttk.Frame(self.main_canvas)
@@ -226,7 +242,9 @@ class ScoreTableApp(tk.Tk):
         view_menu = tk.Menu(menubar, tearoff=False)
         self.menu_view = view_menu
         menubar.add_cascade(label="Ansicht", menu=view_menu)
-        view_menu.add_command(label="Spalten verwalten …", command=self._open_columns_dialog)
+        view_menu.add_command(
+            label="Spalten verwalten …", command=self._open_columns_dialog
+        )
 
         # Alle Widgets werden jetzt in self.main_frame gepackt statt in self
 
@@ -239,25 +257,36 @@ class ScoreTableApp(tk.Tk):
         self.ent_title.grid(row=0, column=1, sticky="w", padx=(6, 12))
         self.ent_title.insert(0, "Mein Wettbewerb")
 
-        self.lbl_title_display = ttk.Label(frm_title, text="Mein Wettbewerb", font=("Arial", 16, "bold"))
-        self.lbl_title_display.grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 2))
+        self.lbl_title_display = ttk.Label(
+            frm_title, text="Mein Wettbewerb", font=("Arial", 16, "bold")
+        )
+        self.lbl_title_display.grid(
+            row=1, column=0, columnspan=5, sticky="w", pady=(6, 2)
+        )
 
         def update_title(*_):
             self.lbl_title_display.config(text=self.ent_title.get())
+
         self.ent_title.bind("<KeyRelease>", update_title)
 
         ttk.Label(frm_title, text="Logo:").grid(row=0, column=2, sticky="e")
         self.lbl_logo_name = ttk.Label(frm_title, text="(kein Logo gewählt)")
         self.lbl_logo_name.grid(row=0, column=3, sticky="w", padx=(6, 6))
-        ttk.Button(frm_title, text="Logo wählen…", command=self.on_choose_logo).grid(row=0, column=4, sticky="w")
+        ttk.Button(frm_title, text="Logo wählen…", command=self.on_choose_logo).grid(
+            row=0, column=4, sticky="w"
+        )
 
         # Disziplin-Checkboxen
         frm_disc = ttk.LabelFrame(self.main_frame, text="Disziplinen", padding=(10, 8))
         frm_disc.pack(fill="x", padx=10, pady=(0, 6))
 
         for idx, d in enumerate(DISCIPLINES):
-            cb = ttk.Checkbutton(frm_disc, text=d.label, variable=self.disc_state[d.code],
-                                 command=self._on_toggle_disciplines)
+            cb = ttk.Checkbutton(
+                frm_disc,
+                text=d.label,
+                variable=self.disc_state[d.code],
+                command=self._on_toggle_disciplines,
+            )
             cb.grid(row=0, column=idx, sticky="w", padx=(0, 12))
 
         # Eingabe-Bereich (Name, Startnr, dynamische Disziplin-Eingaben + Buttons)
@@ -279,57 +308,72 @@ class ScoreTableApp(tk.Tk):
         # Buttons in eigenes Frame verschieben
         frm_buttons = ttk.Frame(frm_input)
         frm_buttons.grid(row=1, column=0, columnspan=105, sticky="w", pady=(8, 0))
-        
+
         self.btn_add = ttk.Button(frm_buttons, text="Add line", command=self.on_add_row)
         self.btn_add.grid(row=0, column=0, padx=(0, 12))
-        ttk.Button(frm_buttons, text="Delete line", command=self.on_delete_row).grid(row=0, column=1, padx=(0, 12))
-        
-        ttk.Button(frm_buttons, text="load CSV", command=self.load_csv).grid(row=0, column=2, padx=(0, 12))
-        ttk.Button(frm_buttons, text="save CSV", command=self.export_csv).grid(row=0, column=3, padx=(0, 12))
-        ttk.Button(frm_buttons, text="save PDF", command=self.export_pdf).grid(row=0, column=4, padx=(0, 12))
-        ttk.Button(frm_buttons, text="Overall awards (PDF/DOCX)", command=self.export_individual_reports).grid(row=0, column=5, padx=(0, 12))
-        
+        ttk.Button(frm_buttons, text="Delete line", command=self.on_delete_row).grid(
+            row=0, column=1, padx=(0, 12)
+        )
+
+        ttk.Button(frm_buttons, text="load CSV", command=self.load_csv).grid(
+            row=0, column=2, padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="save CSV", command=self.export_csv).grid(
+            row=0, column=3, padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="save PDF", command=self.export_pdf).grid(
+            row=0, column=4, padx=(0, 12)
+        )
+        ttk.Button(
+            frm_buttons,
+            text="Overall awards (PDF/DOCX)",
+            command=self.export_individual_reports,
+        ).grid(row=0, column=5, padx=(0, 12))
+
         # Scorsheet options in seperate frame
-        frm_scoresheet = ttk.LabelFrame(self.main_frame, text="Scoresheet", padding=(10, 8))
+        frm_scoresheet = ttk.LabelFrame(
+            self.main_frame, text="Scoresheet", padding=(10, 8)
+        )
         frm_scoresheet.pack(fill="x", padx=10, pady=(0, 6))
-        #frm_scoresheet.grid(row=2, column=0, columnspan=105, sticky="w", pady=(8, 0))
-        
-        ttk.Label(frm_scoresheet, text="Number of circles:").grid(row=0, column=2, sticky="w")
+        # frm_scoresheet.grid(row=2, column=0, columnspan=105, sticky="w", pady=(8, 0))
+
+        ttk.Label(frm_scoresheet, text="Number of circles:").grid(
+            row=0, column=2, sticky="w"
+        )
         self.ent_circle = ttk.Entry(frm_scoresheet, width=10)
         self.ent_circle.grid(row=0, column=3, sticky="w", padx=(6, 12))
         self.ent_circle.insert(0, "2")
-        
+
         # Dropdown für Event
-        ttk.Label(frm_scoresheet, text="Event:").grid(row=0, column=4, sticky="w", padx=(20, 6))
+        ttk.Label(frm_scoresheet, text="Event:").grid(
+            row=0, column=4, sticky="w", padx=(20, 6)
+        )
 
         self.event_var = tk.StringVar()
         self.event_var.set(EVENTS[0])  # Standardwert = erstes Element ("ACC")
 
         self.event_dropdown = ttk.OptionMenu(
-            frm_scoresheet,
-            self.event_var,
-            self.event_var.get(),
-            *EVENTS
+            frm_scoresheet, self.event_var, self.event_var.get(), *EVENTS
         )
         self.event_dropdown.grid(row=0, column=5, sticky="w")
-        #scoresheet_event = self.event_var.get()
-        
+        # scoresheet_event = self.event_var.get()
+
         # Dropdown für Sortierung
-        ttk.Label(frm_scoresheet, text="Sorted by").grid(row=0, column=6, sticky="w", padx=(20, 6))
+        ttk.Label(frm_scoresheet, text="Sorted by").grid(
+            row=0, column=6, sticky="w", padx=(20, 6)
+        )
 
         self.sheetsort_var = tk.StringVar()
         self.sheetsort_var.set(SORTED[0])  # Standardwert = erstes Element ("ACC")
 
         self.event_dropdown = ttk.OptionMenu(
-            frm_scoresheet,
-            self.sheetsort_var,
-            self.sheetsort_var.get(),
-            *SORTED
+            frm_scoresheet, self.sheetsort_var, self.sheetsort_var.get(), *SORTED
         )
         self.event_dropdown.grid(row=0, column=7, sticky="w")
-        self.btn_add = ttk.Button(frm_scoresheet, text="print scoresheets", command=self.export_scoresheet)
+        self.btn_add = ttk.Button(
+            frm_scoresheet, text="print scoresheets", command=self.export_scoresheet
+        )
         self.btn_add.grid(row=0, column=8, padx=(0, 12))
-        
 
         for c in range(103):
             frm_input.grid_columnconfigure(c, weight=0)
@@ -348,11 +392,11 @@ class ScoreTableApp(tk.Tk):
 
     def _on_mousewheel(self, event):
         """Vertikales Scrolling mit Mausrad"""
-        self.main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def _on_shift_mousewheel(self, event):
         """Horizontales Scrolling mit Shift+Mausrad"""
-        self.main_canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+        self.main_canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
 
     # =========================
     # Logo wählen
@@ -360,7 +404,10 @@ class ScoreTableApp(tk.Tk):
     def on_choose_logo(self):
         path = filedialog.askopenfilename(
             title="Logo-Datei auswählen",
-            filetypes=[("Bilddateien", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"), ("Alle Dateien", "*.*")],
+            filetypes=[
+                ("Bilddateien", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"),
+                ("Alle Dateien", "*.*"),
+            ],
         )
         if not path:
             return
@@ -386,18 +433,18 @@ class ScoreTableApp(tk.Tk):
         col = 0
         for d in DISCIPLINES:
             if self.disc_state[d.code].get():
-                ttk.Label(self.frm_dyn_inputs, text=f"{d.label} (Erg):").grid(row=0, column=col, sticky="w", padx=(0, 4))
+                ttk.Label(self.frm_dyn_inputs, text=f"{d.label} (Erg):").grid(
+                    row=0, column=col, sticky="w", padx=(0, 4)
+                )
                 ent = ttk.Entry(self.frm_dyn_inputs, width=8)
-                ent.grid(row=0, column=col+1, sticky="w", padx=(0, 12))
+                ent.grid(row=0, column=col + 1, sticky="w", padx=(0, 12))
                 self.disc_entries[d.code] = ent
                 col += 2
 
         # 2) Tabelle neu aufbauen (Spalten abhängig von aktiven Disziplinen)
         #    Wir zerstören/re-erstellen Treeview, übernehmen Reihenfolge & Daten.
-        old_children = []
         if self.tree is not None:
-            old_children = list(self.tree.get_children(""))
-            # Reihenfolge merken
+            pass  # tree exists; children order is preserved via self.data insert order
         for w in self.frm_table.winfo_children():
             w.destroy()
         self._build_tree()
@@ -406,7 +453,7 @@ class ScoreTableApp(tk.Tk):
         #    Reihenfolge bleibt so, wie self.data gespeichert ist (durch Insert)
         for iid in self.data.keys():
             # Item in Tree anlegen, dann Werte aktualisieren
-            new_iid = self.tree.insert("", "end", iid=iid, values=[""] * len(self.all_columns))
+            self.tree.insert("", "end", iid=iid, values=[""] * len(self.all_columns))
             self._update_tree_row(iid)
 
         # 4) Ränge/Total neu berechnen, da Disziplinen sich geändert haben
@@ -470,13 +517,23 @@ class ScoreTableApp(tk.Tk):
             # bereits bekannte Einstellung übernehmen, sonst default sichtbar
             new_visibility[key] = self.column_visibility.get(key, True)
         self.column_visibility = new_visibility
-        self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
+        self.display_columns = [
+            c for c in self.all_columns if self.column_visibility.get(c, True)
+        ]
 
         # Tree + Scrollbar - Scrollbalken innerhalb des Treeview
         self.style = ttk.Style(self)
-        self.style.configure("Treeview.Heading", font=("Arial", 10, "bold"), background="#d9d9d9")
-        self.style.configure("Treeview", rowheight=24, font=("Arial", 10), fieldbackground="#ffffff")
-        self.style.map("Treeview", background=[('selected', '#ececec')], foreground=[('selected', '#000000')])
+        self.style.configure(
+            "Treeview.Heading", font=("Arial", 10, "bold"), background="#d9d9d9"
+        )
+        self.style.configure(
+            "Treeview", rowheight=24, font=("Arial", 10), fieldbackground="#ffffff"
+        )
+        self.style.map(
+            "Treeview",
+            background=[("selected", "#ececec")],
+            foreground=[("selected", "#000000")],
+        )
 
         self.tree = ttk.Treeview(
             self.frm_table,
@@ -496,8 +553,17 @@ class ScoreTableApp(tk.Tk):
 
         # Spalten konfigurieren
         for col in self.all_columns:
-            self.tree.heading(col, text=self.column_headers[col], command=lambda c=col: self.on_sort_column(c))
-            self.tree.column(col, width=self.column_widths[col], anchor=self.column_anchors[col], stretch=False)
+            self.tree.heading(
+                col,
+                text=self.column_headers[col],
+                command=lambda c=col: self.on_sort_column(c),
+            )
+            self.tree.column(
+                col,
+                width=self.column_widths[col],
+                anchor=self.column_anchors[col],
+                stretch=False,
+            )
 
         # Events: Inline-Edit
         self.tree.bind("<Double-1>", self.on_tree_double_click)
@@ -518,7 +584,11 @@ class ScoreTableApp(tk.Tk):
 
         vars_map = {}
         row = 0
-        ttk.Label(frm, text="Sichtbare Spalten (nur aktuell verfügbare):", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w")
+        ttk.Label(
+            frm,
+            text="Sichtbare Spalten (nur aktuell verfügbare):",
+            font=("Arial", 10, "bold"),
+        ).grid(row=row, column=0, sticky="w")
         row += 1
         for col in self.all_columns:
             v = tk.BooleanVar(value=self.column_visibility.get(col, True))
@@ -529,17 +599,23 @@ class ScoreTableApp(tk.Tk):
 
         btns = ttk.Frame(frm)
         btns.grid(row=row, column=0, pady=(8, 0), sticky="e")
-        ttk.Button(btns, text="Abbrechen", command=dlg.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Abbrechen", command=dlg.destroy).pack(
+            side="right", padx=(6, 0)
+        )
+
         def apply_and_close():
             # Sichtbarkeit anwenden
             for col, v in vars_map.items():
                 self.column_visibility[col] = bool(v.get())
-            self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
+            self.display_columns = [
+                c for c in self.all_columns if self.column_visibility.get(c, True)
+            ]
             try:
                 self.tree["displaycolumns"] = self.display_columns
             except Exception:
                 pass
             dlg.destroy()
+
         ttk.Button(btns, text="Übernehmen", command=apply_and_close).pack(side="right")
 
     # =========================
@@ -569,7 +645,11 @@ class ScoreTableApp(tk.Tk):
         return f"{f:.2f}"
 
     def _next_free_startnr(self):
-        used = {int(r.get("startnummer")) for r in self.data.values() if r.get("startnummer") is not None}
+        used = {
+            int(r.get("startnummer"))
+            for r in self.data.values()
+            if r.get("startnummer") is not None
+        }
         n = 1
         while n in used:
             n += 1
@@ -587,9 +667,13 @@ class ScoreTableApp(tk.Tk):
         try:
             startnr = self._parse_int(self.ent_startnr.get())
         except ValueError:
-            messagebox.showwarning("Ungültige Startnummer", "Startnummer muss eine ganze Zahl sein.")
+            messagebox.showwarning(
+                "Ungültige Startnummer", "Startnummer muss eine ganze Zahl sein."
+            )
             return
-        if startnr is None or any(row.get("startnummer") == startnr for row in self.data.values()):
+        if startnr is None or any(
+            row.get("startnummer") == startnr for row in self.data.values()
+        ):
             startnr = self._next_free_startnr()
 
         # Werte je aktive Disziplin erfassen
@@ -602,7 +686,9 @@ class ScoreTableApp(tk.Tk):
                 try:
                     v = self._parse_float(ent.get())
                 except ValueError:
-                    messagebox.showwarning("Ungültige Eingabe", f"{d.label}: Ergebnis muss Zahl sein.")
+                    messagebox.showwarning(
+                        "Ungültige Eingabe", f"{d.label}: Ergebnis muss Zahl sein."
+                    )
                     return
                 disc_values[d.code] = v
 
@@ -611,7 +697,9 @@ class ScoreTableApp(tk.Tk):
         row = {"name": name, "startnummer": startnr, "gesamt": None, "gesamtrang": None}
         # Disziplin-Felder initialisieren
         for d in DISCIPLINES:
-            row[f"{d.code}_erg"] = float(disc_values[d.code]) if disc_values[d.code] is not None else 0.0
+            row[f"{d.code}_erg"] = (
+                float(disc_values[d.code]) if disc_values[d.code] is not None else 0.0
+            )
             row[f"{d.code}_pkt"] = None
             row[f"{d.code}_rang"] = None
 
@@ -634,10 +722,14 @@ class ScoreTableApp(tk.Tk):
     def on_delete_row(self):
         selected = self.tree.selection()
         if not selected:
-            messagebox.showwarning("Auswahl fehlt", "Bitte wähle eine Zeile zum Löschen aus.")
+            messagebox.showwarning(
+                "Auswahl fehlt", "Bitte wähle eine Zeile zum Löschen aus."
+            )
             return
 
-        if not messagebox.askyesno("Zeile löschen", "Soll die ausgewählte Zeile wirklich gelöscht werden?"):
+        if not messagebox.askyesno(
+            "Zeile löschen", "Soll die ausgewählte Zeile wirklich gelöscht werden?"
+        ):
             return
 
         for iid in selected:
@@ -697,9 +789,13 @@ class ScoreTableApp(tk.Tk):
                     self.data[iid][f"{d.code}_rang"] = None
                 continue
             if d.code == "fc":
-                items = [(iid, self.data[iid].get(f"{d.code}_pkt")) for iid in self.data]
+                items = [
+                    (iid, self.data[iid].get(f"{d.code}_pkt")) for iid in self.data
+                ]
             else:
-                items = [(iid, self.data[iid].get(f"{d.code}_erg")) for iid in self.data]
+                items = [
+                    (iid, self.data[iid].get(f"{d.code}_erg")) for iid in self.data
+                ]
             ranks = compute_competition_ranks(items)
             for iid in self.data:
                 self.data[iid][f"{d.code}_rang"] = ranks.get(iid)
@@ -762,7 +858,9 @@ class ScoreTableApp(tk.Tk):
         # Validieren & übernehmen
         if col_key == "name":
             if new_text.strip() == "":
-                messagebox.showwarning("Ungültiger Name", "Der Name darf nicht leer sein.")
+                messagebox.showwarning(
+                    "Ungültiger Name", "Der Name darf nicht leer sein."
+                )
                 return
             self.data[iid]["name"] = new_text.strip()
             self._update_tree_row(iid)
@@ -773,11 +871,17 @@ class ScoreTableApp(tk.Tk):
             try:
                 new_sn = int(new_text)
             except ValueError:
-                messagebox.showwarning("Ungültige Startnummer", "Die Startnummer muss eine ganze Zahl sein.")
+                messagebox.showwarning(
+                    "Ungültige Startnummer",
+                    "Die Startnummer muss eine ganze Zahl sein.",
+                )
                 return
             for oid in self.data:
                 if oid != iid and self.data[oid].get("startnummer") == new_sn:
-                    messagebox.showwarning("Doppelte Startnummer", f"Startnummer {new_sn} ist bereits vergeben.")
+                    messagebox.showwarning(
+                        "Doppelte Startnummer",
+                        f"Startnummer {new_sn} ist bereits vergeben.",
+                    )
                     return
             self.data[iid]["startnummer"] = new_sn
             self._update_tree_row(iid)
@@ -855,10 +959,11 @@ class ScoreTableApp(tk.Tk):
     def export_csv(self):
         import csv
         import datetime
+
         filename = filedialog.asksaveasfilename(
             title="CSV speichern",
             defaultextension=".csv",
-            filetypes=[("CSV-Datei", "*.csv")]
+            filetypes=[("CSV-Datei", "*.csv")],
         )
         if not filename:
             return
@@ -878,10 +983,14 @@ class ScoreTableApp(tk.Tk):
                 row = self.data[iid]
                 out = []
                 for c in cols:
-                    out.append(row[c] if c in ("name",) else self._format_number(row.get(c)))
+                    out.append(
+                        row[c] if c in ("name",) else self._format_number(row.get(c))
+                    )
                 w.writerow(out)
 
-        messagebox.showinfo("Export erfolgreich", f"Die CSV wurde gespeichert:\n{filename}")
+        messagebox.showinfo(
+            "Export erfolgreich", f"Die CSV wurde gespeichert:\n{filename}"
+        )
 
     # =========================
     # Auto-Save CSV
@@ -890,9 +999,12 @@ class ScoreTableApp(tk.Tk):
         import csv
         import datetime
         import os
+
         # Dateiname aus Titel erstellen, ungültige Zeichen ersetzen
         title = self.ent_title.get().strip() or "Wettbewerb"
-        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_title = "".join(
+            c for c in title if c.isalnum() or c in (" ", "-", "_")
+        ).rstrip()
         filename = os.path.join(os.getcwd(), safe_title + ".csv")
 
         # Alle Spalten exportieren, einschließlich inaktiver Disziplinen
@@ -911,9 +1023,13 @@ class ScoreTableApp(tk.Tk):
                     row = self.data[iid]
                     out = []
                     for c in cols:
-                        out.append(row[c] if c in ("name",) else self._format_number(row.get(c)))
+                        out.append(
+                            row[c]
+                            if c in ("name",)
+                            else self._format_number(row.get(c))
+                        )
                     w.writerow(out)
-        except Exception as e:
+        except Exception:
             # Optional: Fehlermeldung, aber da automatisch, still ignorieren
             pass
 
@@ -922,9 +1038,9 @@ class ScoreTableApp(tk.Tk):
     # =========================
     def load_csv(self):
         import csv
+
         filename = filedialog.askopenfilename(
-            title="CSV laden",
-            filetypes=[("CSV-Datei", "*.csv"), ("Alle Dateien", "*")]
+            title="CSV laden", filetypes=[("CSV-Datei", "*.csv"), ("Alle Dateien", "*")]
         )
         if not filename:
             return
@@ -934,11 +1050,15 @@ class ScoreTableApp(tk.Tk):
                 reader = csv.reader(f, delimiter=";")
                 rows = list(reader)
         except Exception as e:
-            messagebox.showerror("Fehler beim Einlesen", f"CSV konnte nicht eingelesen werden:\n{e}")
+            messagebox.showerror(
+                "Fehler beim Einlesen", f"CSV konnte nicht eingelesen werden:\n{e}"
+            )
             return
 
         if len(rows) < 4:
-            messagebox.showerror("Fehler", "CSV-Datei ist zu kurz oder hat nicht das erwartete Format.")
+            messagebox.showerror(
+                "Fehler", "CSV-Datei ist zu kurz oder hat nicht das erwartete Format."
+            )
             return
 
         # Erste Zeile: Titel
@@ -974,7 +1094,9 @@ class ScoreTableApp(tk.Tk):
         self.data.clear()
 
         for idx, raw_row in enumerate(csv_rows, start=1):
-            row = {k: (v.strip() if isinstance(v, str) else v) for k, v in raw_row.items()}
+            row = {
+                k: (v.strip() if isinstance(v, str) else v) for k, v in raw_row.items()
+            }
             normalized = {(_normalize_key(k)): v for k, v in row.items()}
 
             name = _get(normalized, "name", "participant", "teilnehmer")
@@ -1001,7 +1123,7 @@ class ScoreTableApp(tk.Tk):
                 keys = [
                     f"{d.label} erg".lower(),
                     f"{d.code}_erg".lower(),
-                    f"{d.label.lower()}_erg", 
+                    f"{d.label.lower()}_erg",
                     f"{d.label}erg".lower(),
                 ]
                 val = None
@@ -1024,7 +1146,10 @@ class ScoreTableApp(tk.Tk):
             self._recalc_row(iid)
         self._recalc_ranks_and_update()
 
-        messagebox.showinfo("Import erfolgreich", f"{len(self.data)} Zeilen aus '{os.path.basename(filename)}' geladen.")
+        messagebox.showinfo(
+            "Import erfolgreich",
+            f"{len(self.data)} Zeilen aus '{os.path.basename(filename)}' geladen.",
+        )
 
     # =========================
     # Export PDF Gesamtliste
@@ -1034,20 +1159,26 @@ class ScoreTableApp(tk.Tk):
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import A4, landscape
             from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Table,
+                TableStyle,
+                Paragraph,
+                Spacer,
+            )
             from reportlab.lib.styles import getSampleStyleSheet
         except Exception:
             messagebox.showerror(
                 "ReportLab fehlt",
                 "Für den PDF-Export wird das Paket 'reportlab' benötigt.\n"
-                "Installiere es mit:\n\n    pip install reportlab"
+                "Installiere es mit:\n\n    pip install reportlab",
             )
             return
 
         filename = filedialog.asksaveasfilename(
             title="PDF speichern",
             defaultextension=".pdf",
-            filetypes=[("PDF-Datei", "*.pdf")]
+            filetypes=[("PDF-Datei", "*.pdf")],
         )
         if not filename:
             return
@@ -1055,10 +1186,10 @@ class ScoreTableApp(tk.Tk):
         doc = SimpleDocTemplate(
             filename,
             pagesize=landscape(A4),
-            leftMargin=15*mm,
-            rightMargin=15*mm,
-            topMargin=15*mm,
-            bottomMargin=15*mm,
+            leftMargin=15 * mm,
+            rightMargin=15 * mm,
+            topMargin=15 * mm,
+            bottomMargin=15 * mm,
         )
 
         styles = getSampleStyleSheet()
@@ -1092,39 +1223,51 @@ class ScoreTableApp(tk.Tk):
         # Spaltenbreiten heuristisch
         # Basis: 60 + 18 + 22 + 24 = 124mm, Rest auf Disziplinen; pro Disziplin ~ (22+22+20)=64mm
         col_widths = []
-        base_widths = [45*mm, 11*mm, 11*mm, 11*mm]
+        base_widths = [45 * mm, 11 * mm, 11 * mm, 11 * mm]
         col_widths.extend(base_widths)
         for d in DISCIPLINES:
             if self.disc_state[d.code].get():
-                col_widths.extend([11*mm, 11*mm, 9*mm])
+                col_widths.extend([11 * mm, 11 * mm, 9 * mm])
 
         tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 6),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("ALIGN", (0, 1), (0, -1), "LEFT"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-        ]))
+        tbl.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 6),
+                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                    (
+                        "ROWBACKGROUNDS",
+                        (0, 1),
+                        (-1, -1),
+                        [colors.whitesmoke, colors.white],
+                    ),
+                ]
+            )
+        )
         story.append(tbl)
 
         try:
             doc.build(story)
         except Exception as e:
-            messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+            messagebox.showerror(
+                "PDF-Fehler",
+                f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}",
+            )
             return
 
-        messagebox.showinfo("Export erfolgreich", f"Die PDF wurde gespeichert:\n{filename}")
+        messagebox.showinfo(
+            "Export erfolgreich", f"Die PDF wurde gespeichert:\n{filename}"
+        )
 
     # =========================
     # Export: Individuelle Berichte (A4, kompakte Disziplin-Tabelle, Logo)
@@ -1134,14 +1277,22 @@ class ScoreTableApp(tk.Tk):
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Table,
+                TableStyle,
+                Paragraph,
+                Spacer,
+                Image,
+                PageBreak,
+            )
             from reportlab.lib import colors
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         except Exception:
             pdf_available = False
         else:
             pdf_available = True
-    
+
         try:
             from docx import Document
             from docx.shared import Inches
@@ -1151,48 +1302,48 @@ class ScoreTableApp(tk.Tk):
             docx_available = False
         else:
             docx_available = True
-    
+
         if not pdf_available and not docx_available:
             messagebox.showerror(
                 "Fehlende Pakete",
                 "Weder ReportLab (PDF) noch python-docx (Word) sind installiert.\n"
                 "Installiere mindestens eines davon:\n\n"
                 "pip install reportlab\n"
-                "pip install python-docx"
+                "pip install python-docx",
             )
             return
-    
+
         if not self.data:
             messagebox.showwarning("Keine Daten", "Es sind keine Teilnehmer vorhanden.")
             return
-    
+
         # Ränge aktualisieren
         self._recalc_ranks_and_update()
-    
+
         # Sortierung
         entries = sorted(
             self.data.items(),
-            key=lambda kv: ((kv[1].get("gesamtrang") or 10**9), str(kv[1].get("name") or ""))
+            key=lambda kv: (
+                (kv[1].get("gesamtrang") or 10**9),
+                str(kv[1].get("name") or ""),
+            ),
         )
-    
+
         # --- Dateidialog: Nutzer entscheidet Format ---
         out_file = filedialog.asksaveasfilename(
             title="Bericht speichern",
             defaultextension=".pdf",
-            filetypes=[
-                ("PDF-Datei", "*.pdf"),
-                ("Word-Dokument", "*.docx")
-            ]
+            filetypes=[("PDF-Datei", "*.pdf"), ("Word-Dokument", "*.docx")],
         )
         if not out_file:
             return
-    
+
         # --- Format bestimmen ---
         is_pdf = out_file.lower().endswith(".pdf")
         is_docx = out_file.lower().endswith(".docx")
-    
+
         title_text = self.ent_title.get().strip() or "Wettbewerb"
-    
+
         # ---------------------------------------------------------
         # 1) WORD EXPORT
         # ---------------------------------------------------------
@@ -1200,9 +1351,9 @@ class ScoreTableApp(tk.Tk):
             if not docx_available:
                 messagebox.showerror("Fehler", "python-docx ist nicht installiert.")
                 return
-    
+
             doc = Document()
-    
+
             def add_logo(document):
                 if not self.logo_path:
                     return
@@ -1211,32 +1362,32 @@ class ScoreTableApp(tk.Tk):
                     document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
                 except Exception:
                     pass
-    
+
             for idx, (iid, row) in enumerate(entries):
                 h = doc.add_heading(title_text, level=1)
                 h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
                 h2 = doc.add_heading("Overall award", level=2)
                 h2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
                 add_logo(doc)
                 doc.add_paragraph("")
-    
+
                 # Teilnehmerkopf
                 table = doc.add_table(rows=0, cols=2)
                 table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    
+
                 def add_info(label, value):
                     r = table.add_row().cells
                     r[0].text = label
                     r[1].text = str(value)
-    
+
                 add_info("Name:", row.get("name") or "")
                 add_info("Gesamtpunkte:", self._format_number(row.get("gesamt")))
                 add_info("Gesamtrang:", self._format_number(row.get("gesamtrang")))
-    
+
                 doc.add_paragraph("")
-    
+
                 # Disziplin-Tabelle
                 disc_table = doc.add_table(rows=1, cols=4)
                 disc_table.style = "Table Grid"
@@ -1245,7 +1396,7 @@ class ScoreTableApp(tk.Tk):
                 hdr[1].text = "Ergebnis"
                 hdr[2].text = "Punkte"
                 hdr[3].text = "Rang"
-    
+
                 for d in DISCIPLINES:
                     if not self.disc_state[d.code].get():
                         continue
@@ -1254,19 +1405,21 @@ class ScoreTableApp(tk.Tk):
                     row_cells[1].text = self._format_number(row.get(f"{d.code}_erg"))
                     row_cells[2].text = self._format_number(row.get(f"{d.code}_pkt"))
                     row_cells[3].text = self._format_number(row.get(f"{d.code}_rang"))
-    
+
                 if idx < len(entries) - 1:
                     doc.add_page_break()
-    
+
             try:
                 doc.save(out_file)
             except Exception as e:
                 messagebox.showerror("Word-Fehler", f"Fehler beim Speichern:\n{e}")
                 return
-    
-            messagebox.showinfo("Export erfolgreich", f"Word-Dokument gespeichert:\n{out_file}")
+
+            messagebox.showinfo(
+                "Export erfolgreich", f"Word-Dokument gespeichert:\n{out_file}"
+            )
             return
-    
+
         # ---------------------------------------------------------
         # 2) PDF EXPORT (dein bestehender Code)
         # ---------------------------------------------------------
@@ -1274,117 +1427,174 @@ class ScoreTableApp(tk.Tk):
             if not pdf_available:
                 messagebox.showerror("Fehler", "ReportLab ist nicht installiert.")
                 return
-    
-    
+
             styles = getSampleStyleSheet()
-            title_style = ParagraphStyle("ReportTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=25, leading=24, spaceAfter=6)
-            h2_style = ParagraphStyle("H2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=20, spaceBefore=6, spaceAfter=6, alignment=1)
-            label_style = ParagraphStyle("Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11)
-            text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
-            name_style = ParagraphStyle("Name", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=15, spaceBefore=6, spaceAfter=6, alignment=1)
-            rank_style = ParagraphStyle("Rank", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=20, spaceBefore=6, spaceAfter=6, alignment=1)
-            points_style = ParagraphStyle("Points", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=11, spaceBefore=6, spaceAfter=6, alignment=1)
-    
+            title_style = ParagraphStyle(
+                "ReportTitle",
+                parent=styles["Title"],
+                fontName="Helvetica-Bold",
+                fontSize=25,
+                leading=24,
+                spaceAfter=6,
+            )
+            h2_style = ParagraphStyle(
+                "H2",
+                parent=styles["Heading2"],
+                fontName="Helvetica-Bold",
+                fontSize=20,
+                spaceBefore=6,
+                spaceAfter=6,
+                alignment=1,
+            )
+            name_style = ParagraphStyle(
+                "Name",
+                parent=styles["Heading2"],
+                fontName="Helvetica-Bold",
+                fontSize=15,
+                spaceBefore=6,
+                spaceAfter=6,
+                alignment=1,
+            )
+            rank_style = ParagraphStyle(
+                "Rank",
+                parent=styles["Heading2"],
+                fontName="Helvetica-Bold",
+                fontSize=20,
+                spaceBefore=6,
+                spaceAfter=6,
+                alignment=1,
+            )
+            points_style = ParagraphStyle(
+                "Points",
+                parent=styles["Heading2"],
+                fontName="Helvetica-Bold",
+                fontSize=11,
+                spaceBefore=6,
+                spaceAfter=6,
+                alignment=1,
+            )
+
             def make_logo():
                 if not self.logo_path:
                     return None
                 try:
                     img = Image(self.logo_path)
-                    max_w, max_h = 160*mm, 160*mm
+                    max_w, max_h = 160 * mm, 160 * mm
                     iw, ih = img.imageWidth, img.imageHeight
-                    scale = min(max_w/iw, max_h/ih)
+                    scale = min(max_w / iw, max_h / ih)
                     img.drawWidth = iw * scale
                     img.drawHeight = ih * scale
                     return img
                 except Exception:
                     return None
-    
+
             title_text = self.ent_title.get().strip() or "Wettbewerb"
-    
+
             def build_story_for_row(row):
                 story = []
                 logo = make_logo()
                 story.append(Paragraph(title_text, title_style))
                 story.append(Spacer(1, 6))
-                story.append(Paragraph('<para alignment="center">Overall award</para>', h2_style))
+                story.append(
+                    Paragraph('<para alignment="center">Overall award</para>', h2_style)
+                )
                 story.append(Spacer(1, 6))
-                
+
                 if logo:
                     logo.hAlign = "CENTER"
                     story.append(logo)
-                
+
                 story.append(Spacer(1, 20))
 
                 _name = str(row.get("name") or "")
                 _gesamt = self._format_number(row.get("gesamt"))
                 _rank = self._format_number(row.get("gesamtrang"))
-                
+
                 story.append(Paragraph(f"{_rank}.Place", rank_style))
                 story.append(Spacer(1, 4))
                 story.append(Paragraph(f"with {_gesamt} points", points_style))
                 story.append(Spacer(1, 4))
                 story.append(Paragraph(f"{_name}", name_style))
-#                # Teilnehmerkopf
-#                info_tbl = Table([
-#                    [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
-#                    #[Paragraph("Startnummer:", label_style), Paragraph(self._format_number(row.get("startnummer")), text_style)],
-#                    [Paragraph("Gesamtpunkte:", label_style), Paragraph(self._format_number(row.get("gesamt")), text_style)],
-#                    [Paragraph("Gesamtrang:", label_style), Paragraph(self._format_number(row.get("gesamtrang")), text_style)]
-#                ], colWidths=[40*mm, None])
-#            #    info_tbl.setStyle(TableStyle([
-#            #        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-#            #        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-#            #        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-#            #    ]))
-#                
-#                info_tbl.setStyle(TableStyle([
-#                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-#                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
-#                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-#                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-#                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-#                ]))
-#                info_tbl.hAlign = "CENTER"
-#          
-#                story.append(info_tbl)
+                #                # Teilnehmerkopf
+                #                info_tbl = Table([
+                #                    [Paragraph("Name:", label_style), Paragraph(str(row.get("name") or ""), text_style)],
+                #                    #[Paragraph("Startnummer:", label_style), Paragraph(self._format_number(row.get("startnummer")), text_style)],
+                #                    [Paragraph("Gesamtpunkte:", label_style), Paragraph(self._format_number(row.get("gesamt")), text_style)],
+                #                    [Paragraph("Gesamtrang:", label_style), Paragraph(self._format_number(row.get("gesamtrang")), text_style)]
+                #                ], colWidths=[40*mm, None])
+                #            #    info_tbl.setStyle(TableStyle([
+                #            #        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                #            #        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                #            #        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                #            #    ]))
+                #
+                #                info_tbl.setStyle(TableStyle([
+                #                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                #                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                #                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                #                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                #                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                #                ]))
+                #                info_tbl.hAlign = "CENTER"
+                #
+                #                story.append(info_tbl)
                 story.append(Spacer(1, 30))
-    
+
                 # Kompakte Disziplin-Tabelle (nur aktive)
                 tbl_headers = ["Disziplin", "Ergebnis", "Punkte", "Rang"]
                 tbl_rows = []
                 for d in DISCIPLINES:
                     if not self.disc_state[d.code].get():
                         continue
-                    tbl_rows.append([
-                        d.label,
-                        self._format_number(row.get(f"{d.code}_erg")),
-                        self._format_number(row.get(f"{d.code}_pkt")),
-                        self._format_number(row.get(f"{d.code}_rang")),
-                    ])
+                    tbl_rows.append(
+                        [
+                            d.label,
+                            self._format_number(row.get(f"{d.code}_erg")),
+                            self._format_number(row.get(f"{d.code}_pkt")),
+                            self._format_number(row.get(f"{d.code}_rang")),
+                        ]
+                    )
                 table_data = [tbl_headers] + tbl_rows
-                disc_tbl = Table(table_data, colWidths=[28*mm, 28*mm, 28*mm, 22*mm])
-                disc_tbl.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-    
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 10),
-                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-                ]))
+                disc_tbl = Table(
+                    table_data, colWidths=[28 * mm, 28 * mm, 28 * mm, 22 * mm]
+                )
+                disc_tbl.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 10),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+                            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                            ("FONTSIZE", (0, 1), (-1, -1), 10),
+                            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                            ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                            (
+                                "ROWBACKGROUNDS",
+                                (0, 1),
+                                (-1, -1),
+                                [colors.whitesmoke, colors.white],
+                            ),
+                        ]
+                    )
+                )
                 story.append(disc_tbl)
                 return story
-    
+
             from reportlab.platypus import PageBreak
-            doc = SimpleDocTemplate(out_file, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=16*mm)
+
+            doc = SimpleDocTemplate(
+                out_file,
+                pagesize=A4,
+                leftMargin=18 * mm,
+                rightMargin=18 * mm,
+                topMargin=16 * mm,
+                bottomMargin=16 * mm,
+            )
             story = []
             for idx, (iid, row) in enumerate(entries):
                 story.extend(build_story_for_row(row))
@@ -1393,13 +1603,15 @@ class ScoreTableApp(tk.Tk):
             try:
                 doc.build(story)
             except Exception as e:
-                messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+                messagebox.showerror(
+                    "PDF-Fehler",
+                    f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}",
+                )
                 return
-    
+
             messagebox.showinfo("Export erfolgreich", f"PDF gespeichert:\n{out_file}")
             return
-    
-    
+
     # =========================
     # Hilfsfunktion: Spalten basierend auf Event definieren
     # =========================
@@ -1411,14 +1623,14 @@ class ScoreTableApp(tk.Tk):
           - num_empty_cols: Anzahl der leeren Datenspalten zwischen Name und Result (für die Dateneinträge)
           - col_widths: Liste der Spaltenbreiten in mm
         """
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
 
         if event == "ACC":
-            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            headers = (
+                ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            )
             num_empty_cols = 10
-            col_widths = [12*mm, 40*mm] + [12*mm] * 10 + [15*mm]
+            col_widths = [12 * mm, 40 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == "AUS":
             main_headers = ["Startnr", "Name"]
@@ -1429,47 +1641,135 @@ class ScoreTableApp(tk.Tk):
             main_headers.append("Result")
             sub_headers.append("")
             num_empty_cols = 20
-            col_widths = [12*mm, 35*mm] + [10*mm] * 20 + [15*mm]
+            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 20 + [15 * mm]
             return [main_headers, sub_headers], num_empty_cols, col_widths
         elif event == "END":
             distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
             headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
             num_empty_cols = 16
-            col_widths = [12*mm, 35*mm] + [10*mm] * 16 + [15*mm]
+            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 16 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == "FC":
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12*mm, 40*mm] + [40*mm] * 2 + [40*mm]
+            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == "MTA":
-            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            headers = (
+                ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            )
             num_empty_cols = 5
-            col_widths = [12*mm, 40*mm] + [20*mm] * 5 + [20*mm]
+            col_widths = [12 * mm, 40 * mm] + [20 * mm] * 5 + [20 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == "TC":
-            main_headers = ["Startnr", "Name"] + ["Throw 1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "", "Doubl.1", "", "2", "", "3", "", "4", "", "5", ""] + ["Result"]
-            sub_headers = ["", ""] + ["Left-\nhand\nclean", "Right-\nhand\nclean", "2 hand\nbehind\nback", "2 hand\nunder\nthe-leg", "Eagle\ncatch", "Hacky\ncatch", "Tunnel\ncatch", "1 hand\nbehind\nback", "1 hand\nunder\nthe leg", "Foot\ncatch", "Total\nSingle", "2 hand\nbehind-\nthe-back", "2 hand\nunder-\nthe-leg", "Left-\nhand\nclean", "Hacky\ncatch", "Right-\nhand\nclean", "Tunnel\ncatch", "1 hand\nbehind\nthe back", "1 hand\nunder\nthe leg", "Eagle\ncatch", "Foot\ncatch"] + [""]
-            points_headers = ["", ""] + ["(3)", "(3)", "(4)", "(3)", "(4)", "(7)", "(5)", "(7)", "(6)", "(8)", "", "(4)", "(3)", "(3)", "(7)", "(3)", "(5)", "(7)", "(6)", "(4)", "(8)"] + [""]
+            main_headers = (
+                ["Startnr", "Name"]
+                + [
+                    "Throw 1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "",
+                    "Doubl.1",
+                    "",
+                    "2",
+                    "",
+                    "3",
+                    "",
+                    "4",
+                    "",
+                    "5",
+                    "",
+                ]
+                + ["Result"]
+            )
+            sub_headers = (
+                ["", ""]
+                + [
+                    "Left-\nhand\nclean",
+                    "Right-\nhand\nclean",
+                    "2 hand\nbehind\nback",
+                    "2 hand\nunder\nthe-leg",
+                    "Eagle\ncatch",
+                    "Hacky\ncatch",
+                    "Tunnel\ncatch",
+                    "1 hand\nbehind\nback",
+                    "1 hand\nunder\nthe leg",
+                    "Foot\ncatch",
+                    "Total\nSingle",
+                    "2 hand\nbehind-\nthe-back",
+                    "2 hand\nunder-\nthe-leg",
+                    "Left-\nhand\nclean",
+                    "Hacky\ncatch",
+                    "Right-\nhand\nclean",
+                    "Tunnel\ncatch",
+                    "1 hand\nbehind\nthe back",
+                    "1 hand\nunder\nthe leg",
+                    "Eagle\ncatch",
+                    "Foot\ncatch",
+                ]
+                + [""]
+            )
+            points_headers = (
+                ["", ""]
+                + [
+                    "(3)",
+                    "(3)",
+                    "(4)",
+                    "(3)",
+                    "(4)",
+                    "(7)",
+                    "(5)",
+                    "(7)",
+                    "(6)",
+                    "(8)",
+                    "",
+                    "(4)",
+                    "(3)",
+                    "(3)",
+                    "(7)",
+                    "(3)",
+                    "(5)",
+                    "(7)",
+                    "(6)",
+                    "(4)",
+                    "(8)",
+                ]
+                + [""]
+            )
             num_empty_cols = 21
-            col_widths = [12*mm, 35*mm] + [9*mm] * 21 + [15*mm]
-            return [main_headers, sub_headers, points_headers], num_empty_cols, col_widths
+            col_widths = [12 * mm, 35 * mm] + [9 * mm] * 21 + [15 * mm]
+            return (
+                [main_headers, sub_headers, points_headers],
+                num_empty_cols,
+                col_widths,
+            )
         elif event == "TAPIR":
-            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            headers = (
+                ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
+            )
             num_empty_cols = 5
-            col_widths = [12*mm, 40*mm] + [15*mm] * 5 + [15*mm]
+            col_widths = [12 * mm, 40 * mm] + [15 * mm] * 5 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == "TIMED":
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12*mm, 40*mm] + [40*mm] * 2 + [40*mm]
+            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
         else:
-            headers = ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            headers = (
+                ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
+            )
             num_empty_cols = 10
-            col_widths = [12*mm, 30*mm] + [12*mm] * 10 + [15*mm]
+            col_widths = [12 * mm, 30 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-    
+
     # =========================
     # Export Scoresheet (DOCX/PDF mit Circles)
     # =========================
@@ -1479,16 +1779,23 @@ class ScoreTableApp(tk.Tk):
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import A4, landscape
             from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Table,
+                TableStyle,
+                Paragraph,
+                Spacer,
+                PageBreak,
+            )
             from reportlab.lib.styles import getSampleStyleSheet
         except Exception:
             pdf_available = False
         else:
             pdf_available = True
-    
+
         try:
             from docx import Document
-            from docx.shared import Inches, Pt
+            from docx.shared import Pt
             from docx.enum.text import WD_ALIGN_PARAGRAPH
             from docx.enum.table import WD_TABLE_ALIGNMENT
             from docx.enum.section import WD_ORIENT
@@ -1498,21 +1805,21 @@ class ScoreTableApp(tk.Tk):
             docx_available = False
         else:
             docx_available = True
-    
+
         if not pdf_available and not docx_available:
             messagebox.showerror(
                 "Fehlende Pakete",
                 "Weder ReportLab (PDF) noch python-docx (DOCX) sind installiert.\n"
                 "Installiere mindestens eines davon:\n\n"
                 "pip install reportlab\n"
-                "pip install python-docx"
+                "pip install python-docx",
             )
             return
-    
+
         if not self.data:
             messagebox.showwarning("Keine Daten", "Es sind keine Teilnehmer vorhanden.")
             return
-    
+
         # --- Eingaben auslesen ---
         try:
             num_circles = int(self.ent_circle.get().strip() or "1")
@@ -1520,30 +1827,40 @@ class ScoreTableApp(tk.Tk):
                 num_circles = 1
         except (ValueError, AttributeError):
             num_circles = 1
-    
-        sort_method = self.sheetsort_var.get() if hasattr(self, 'sheetsort_var') else "StartNr"
-        event = self.event_var.get() if hasattr(self, 'event_var') else "ACC"
-        
+
+        sort_method = (
+            self.sheetsort_var.get() if hasattr(self, "sheetsort_var") else "StartNr"
+        )
+        event = self.event_var.get() if hasattr(self, "event_var") else "ACC"
+
         # Ränge aktualisieren
         self._recalc_ranks_and_update()
-    
+
         # --- Daten sammeln und sortieren ---
         if sort_method == "Rank":
             # Sortierung nach Rang
             entries = sorted(
                 self.data.items(),
-                key=lambda kv: ((kv[1].get("gesamtrang") or 10**9), str(kv[1].get("name") or ""))
+                key=lambda kv: (
+                    (kv[1].get("gesamtrang") or 10**9),
+                    str(kv[1].get("name") or ""),
+                ),
             )
         else:
             # Sortierung nach Startnummer (Standard)
             entries = sorted(
                 self.data.items(),
-                key=lambda kv: (int(kv[1].get("startnummer") or 999), str(kv[1].get("name") or ""))
+                key=lambda kv: (
+                    int(kv[1].get("startnummer") or 999),
+                    str(kv[1].get("name") or ""),
+                ),
             )
-    
+
         # --- Daten in Circles aufteilen ---
-        circles_data = self._distribute_entries_to_circles(entries, num_circles, sort_method)
-    
+        circles_data = self._distribute_entries_to_circles(
+            entries, num_circles, sort_method
+        )
+
         # --- Spalten für diesen Event ---
         header_rows, num_empty_cols, col_widths = self._get_scoresheet_columns(event)
         num_cols = len(header_rows[-1])
@@ -1552,19 +1869,16 @@ class ScoreTableApp(tk.Tk):
         out_file = filedialog.asksaveasfilename(
             title="Scoresheet speichern",
             defaultextension=".docx",
-            filetypes=[
-                ("Word-Dokument", "*.docx"),
-                ("PDF-Datei", "*.pdf")
-            ]
+            filetypes=[("Word-Dokument", "*.docx"), ("PDF-Datei", "*.pdf")],
         )
         if not out_file:
             return
-    
+
         is_docx = out_file.lower().endswith(".docx")
         is_pdf = out_file.lower().endswith(".pdf")
-    
+
         title_text = self.ent_title.get().strip() or "Wettbewerb"
-    
+
         # ---------------------------------------------------------
         # 1) DOCX EXPORT
         # ---------------------------------------------------------
@@ -1572,29 +1886,34 @@ class ScoreTableApp(tk.Tk):
             if not docx_available:
                 messagebox.showerror("Fehler", "python-docx ist nicht installiert.")
                 return
-    
+
             doc = Document()
-            
+
             # Setze Querformat (Landscape)
             section = doc.sections[0]
             section.orientation = WD_ORIENT.LANDSCAPE
-            section.page_width, section.page_height = section.page_height, section.page_width
-            
+            section.page_width, section.page_height = (
+                section.page_height,
+                section.page_width,
+            )
+
             def set_cell_background(cell, fill):
                 """Hintergrundfarbe einer Zelle setzen"""
-                shading_elm = OxmlElement('w:shd')
-                shading_elm.set(qn('w:fill'), fill)
+                shading_elm = OxmlElement("w:shd")
+                shading_elm.set(qn("w:fill"), fill)
                 cell._element.get_or_add_tcPr().append(shading_elm)
-    
+
             for circle_idx, circle_entries in enumerate(circles_data, 1):
                 if circle_idx > 1:
                     doc.add_page_break()
-    
+
                 # Titel für Circle
-                heading = doc.add_heading(f"{title_text} - {event} - Circle {circle_idx}", level=1)
+                heading = doc.add_heading(
+                    f"{title_text} - {event} - Circle {circle_idx}", level=1
+                )
                 heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
-# Tabelle erstellen (Header-Zeilen berücksichtigen)
+
+                # Tabelle erstellen (Header-Zeilen berücksichtigen)
                 table = doc.add_table(rows=len(header_rows), cols=num_cols)
                 table.style = "Table Grid"
                 table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1610,7 +1929,7 @@ class ScoreTableApp(tk.Tk):
                                 run.font.bold = True
                                 run.font.size = Pt(9)
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
                 # Datenzeilen
                 for iid, row in circle_entries:
                     row_cells = table.add_row().cells
@@ -1622,7 +1941,7 @@ class ScoreTableApp(tk.Tk):
                     # Leere Zellen für Einträge (Result bleibt leer)
                     for i in range(2, num_cols):
                         row_cells[i].text = ""
-    
+
                     # Zellausrichtung
                     for idx, cell in enumerate(row_cells):
                         for paragraph in cell.paragraphs:
@@ -1632,18 +1951,20 @@ class ScoreTableApp(tk.Tk):
                                 paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
                             else:
                                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
                 doc.add_paragraph("")
-    
+
             try:
                 doc.save(out_file)
             except Exception as e:
                 messagebox.showerror("DOCX-Fehler", f"Fehler beim Speichern:\n{e}")
                 return
-    
-            messagebox.showinfo("Export erfolgreich", f"Scoresheet (DOCX) gespeichert:\n{out_file}")
+
+            messagebox.showinfo(
+                "Export erfolgreich", f"Scoresheet (DOCX) gespeichert:\n{out_file}"
+            )
             return
-    
+
         # ---------------------------------------------------------
         # 2) PDF EXPORT
         # ---------------------------------------------------------
@@ -1651,24 +1972,28 @@ class ScoreTableApp(tk.Tk):
             if not pdf_available:
                 messagebox.showerror("Fehler", "ReportLab ist nicht installiert.")
                 return
-    
+
             styles = getSampleStyleSheet()
             doc = SimpleDocTemplate(
                 out_file,
                 pagesize=landscape(A4),
-                leftMargin=10*mm,
-                rightMargin=10*mm,
-                topMargin=10*mm,
-                bottomMargin=10*mm,
+                leftMargin=10 * mm,
+                rightMargin=10 * mm,
+                topMargin=10 * mm,
+                bottomMargin=10 * mm,
             )
             story = []
-    
+
             for circle_idx, circle_entries in enumerate(circles_data, 1):
                 if circle_idx > 1:
                     story.append(PageBreak())
 
                 # Titel für Circle
-                story.append(Paragraph(f"{title_text} - {event} - Circle {circle_idx}", styles["Title"]))
+                story.append(
+                    Paragraph(
+                        f"{title_text} - {event} - Circle {circle_idx}", styles["Title"]
+                    )
+                )
                 story.append(Spacer(1, 6))
 
                 table_data = [list(r) for r in header_rows]
@@ -1678,40 +2003,56 @@ class ScoreTableApp(tk.Tk):
                     name = str(row.get("name", ""))
 
                     row_vals = [startnr, name]
-                    row_vals.extend([""] * (num_empty_cols + 1))  # Leere Zellen für Einträge und Result
+                    row_vals.extend(
+                        [""] * (num_empty_cols + 1)
+                    )  # Leere Zellen für Einträge und Result
                     table_data.append(row_vals)
 
-                tbl = Table(table_data, colWidths=col_widths, repeatRows=len(header_rows))
-                tbl.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#d3d3d3")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 7),
-                    ("TOPPADDING", (0, 0), (-1, 0), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
-    
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 7),
-                    ("ALIGN", (0, 1), (0, -1), "CENTER"),
-                    ("ALIGN", (1, 1), (1, -1), "LEFT"),
-                    ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
-                ]))
+                tbl = Table(
+                    table_data, colWidths=col_widths, repeatRows=len(header_rows)
+                )
+                tbl.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#d3d3d3")),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 7),
+                            ("TOPPADDING", (0, 0), (-1, 0), 5),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+                            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                            ("FONTSIZE", (0, 1), (-1, -1), 7),
+                            ("ALIGN", (0, 1), (0, -1), "CENTER"),
+                            ("ALIGN", (1, 1), (1, -1), "LEFT"),
+                            ("ALIGN", (2, 1), (-1, -1), "CENTER"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                            (
+                                "ROWBACKGROUNDS",
+                                (0, 1),
+                                (-1, -1),
+                                [colors.whitesmoke, colors.white],
+                            ),
+                        ]
+                    )
+                )
                 story.append(tbl)
                 story.append(Spacer(1, 12))
-    
+
             try:
                 doc.build(story)
             except Exception as e:
-                messagebox.showerror("PDF-Fehler", f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}")
+                messagebox.showerror(
+                    "PDF-Fehler",
+                    f"Beim Erstellen des PDFs ist ein Fehler aufgetreten:\n{e}",
+                )
                 return
-    
-            messagebox.showinfo("Export erfolgreich", f"Scoresheet (PDF) gespeichert:\n{out_file}")
-    
+
+            messagebox.showinfo(
+                "Export erfolgreich", f"Scoresheet (PDF) gespeichert:\n{out_file}"
+            )
+
     # =========================
     # Hilfsfunktion: Entries auf Circles verteilen
     # =========================
@@ -1722,7 +2063,7 @@ class ScoreTableApp(tk.Tk):
         - sort_method == "Rank": zyklische Verteilung nach Rang
         """
         circles_data = [[] for _ in range(num_circles)]
-        
+
         if sort_method == "Rank":
             # Zyklische Verteilung nach Rang (Rund-Robin)
             # Rang 1 → Circle 0, Rang 2 → Circle 1, ..., Rang n → Circle (n-1) % num_circles
@@ -1733,12 +2074,12 @@ class ScoreTableApp(tk.Tk):
             # Sequentielle Verteilung nach Startnummer
             total_entries = len(entries)
             entries_per_circle = max(1, total_entries // num_circles)
-            
+
             for idx, entry in enumerate(entries):
                 # Berechne Circle-Index basierend auf Position
                 circle_idx = min(idx // entries_per_circle, num_circles - 1)
                 circles_data[circle_idx].append(entry)
-        
+
         return circles_data
 
     # =========================
@@ -1755,7 +2096,7 @@ if __name__ == "__main__":
     app = ScoreTableApp()
     app.mainloop()
 
-'''spaltenbreite für scoresheets bei header def mit übergeben - erl.
+"""spaltenbreite für scoresheets bei header def mit übergeben - erl.
         - spaltenbreiten definieren, mehr Höhe für die Zeilen
    disziplin tapir hinzufügen ->erledigt
    scoresheet für tapir anpassen
@@ -1765,4 +2106,4 @@ if __name__ == "__main__":
     
    
  
-'''
+"""
