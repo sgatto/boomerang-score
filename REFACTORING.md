@@ -98,7 +98,7 @@ src/boomerang_score/
 
 Currently, data only exists in memory during app runtime. Add persistence:
 
-- [ ] **Save/Load Competition**: Serialize Competition to JSON/pickle
+- ✅ **Save/Load Competition**: Serialize Competition to JSON/pickle
   - Add `CompetitionRepository` service
   - Implement `save_to_file()` and `load_from_file()` methods
   - Add "File" menu with New/Open/Save/Save As
