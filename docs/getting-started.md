@@ -5,44 +5,76 @@ title: Getting Started
 
 # Getting Started
 
-## Installation
+## Installation and Run
 
-### Requirements
+### Using a pre-built binary
+#### Requirements
+
+- OS **Windows** or **MAC-OS**
+#### Download the binary
+Download the latest release `.exe` (WIN) or `.dmg` (MAC) file from [releases](https://github.com/sgatto/boomerang-score/releases)
+#### Run the app
+Double-click the downloaded file to run the app.
+
+If the app does not run, check that the file is not corrupted and that the file extension is `.exe` (WIN) or `.dmg` (MAC).
+
+**Note:** The app is not signed, so opening it may prompt a warning, asking if you want to run it anyway (on Windows).
+If you do not want to be prompted, you can disable the warning by adding the app to the list of trusted applications in your operating system settings.
+On Windows, this can be done by right-clicking the app icon and selecting "More Info" > "Run Anyway".
+
+**Note:** On **macOS**, you may need to allow the app to run in the "Security & Privacy" settings.
+
+### From GitHub sources
+#### Requirements
 
 - **Python 3.10–3.13**
 - **uv** (Python package manager) — [install here](https://docs.astral.sh/uv/)
 
-### Install from GitHub
-
+#### Install by cloning the repository
+Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/sgatto/boomerang-score.git
 cd boomerang-score
 uv sync
 ```
-
-This installs all runtime and dev dependencies.
-
-### Install from PyPI (Coming Soon)
-
-Once published:
-
-```bash
-pip install boomerang-score
-```
-
-## Run the App
-
+#### Run the app
 ```bash
 uv run boomerang-score
 ```
 
-Or:
 
+### Install and run from GitHub whl release
+#### Requirements
+- **Python 3.10–3.13**
+#### Install from whl release
+First download a `.whl` package file from a release from [releases](https://github.com/sgatto/boomerang-score/releases)
+Then install the `.whl` file by running:
 ```bash
-uv run python -m boomerang_score
+pip install boomerang-score-*.*.*-py3-none-any.whl
 ```
+This installs the `boomerang-score` python package, its dependencies and its command line shortcut to run the app.
+#### Run from the command line
+To run the app from the command line it should be possible to run directly the `boomerang-score` command:
+````bash
+boomerang-score
+````
+If not, it should be possible to run the app with:
+````bash
+python -m boomerang_score
+````
 
-The Tkinter GUI launches in a new window.
+### Install from PyPI (Coming Soon)
+#### Requirements
+- **Python 3.10–3.13**
+#### Install from PyPI
+Once `boomerang-score` will be published on pypi, it will be possible to install it with:
+```bash
+pip install boomerang-score
+```
+This installs the `boomerang-score` python package, its dependencies and its command line shortcut to run the app.
+#### Run from the command line
+Once installed, you can run the app as described in the [Run from the command line](#run-from-the-command-line) of the previous section.
+
 
 ## First Tournament
 
