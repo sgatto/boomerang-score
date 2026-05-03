@@ -10,7 +10,7 @@ title: Getting Started
 ### Using a pre-built binary
 #### Requirements
 
-- OS **Windows** or **MAC-OS**
+- OS **Windows** or **macOS**
 #### Download the binary
 Download the latest release `.exe` (WIN) or `.dmg` (MAC) file from [releases](https://github.com/sgatto/boomerang-score/releases)
 #### Run the app
@@ -47,33 +47,34 @@ uv run boomerang-score
 #### Requirements
 - **Python 3.10–3.13**
 #### Install from whl release
-First download a `.whl` package file from a release from [releases](https://github.com/sgatto/boomerang-score/releases)
+First download a `.whl` package file from [releases](https://github.com/sgatto/boomerang-score/releases)
 Then install the `.whl` file by running:
 ```bash
 pip install boomerang-score-*.*.*-py3-none-any.whl
 ```
 This installs the `boomerang-score` python package, its dependencies and its command line shortcut to run the app.
 #### Run from the command line
-To run the app from the command line it should be possible to run directly the `boomerang-score` command:
-````bash
+You can run the app directly using the `boomerang-score` command:
+```bash
 boomerang-score
-````
-If not, it should be possible to run the app with:
-````bash
+```
+
+If that doesn't work, you can also run:
+```bash
 python -m boomerang_score
-````
+```
 
 ### Install from PyPI (Coming Soon)
 #### Requirements
 - **Python 3.10–3.13**
 #### Install from PyPI
-Once `boomerang-score` will be published on pypi, it will be possible to install it with:
+Once `boomerang-score` is published on PyPI, you will be able to install it with:
 ```bash
 pip install boomerang-score
 ```
 This installs the `boomerang-score` python package, its dependencies and its command line shortcut to run the app.
 #### Run from the command line
-Once installed, you can run the app as described in the [Run from the command line](#run-from-the-command-line) of the previous section.
+Once installed, you can run the app directly using the `boomerang-score` command, or use `python -m boomerang_score` if needed.
 
 
 ## First Tournament
@@ -135,14 +136,6 @@ uv sync
 ### Font rendering issues on macOS
 
 The app uses system Python for Tkinter. Make sure you're using the Python from `/usr/bin/python3` or a version from python.org (not Homebrew). If issues persist, check `pyproject.toml` for the supported Python version range.
-
-### Permission denied on executable
-
-On macOS/Linux:
-
-```bash
-chmod +x ~/.cargo/bin/uv
-```
 
 ## Next Steps
 
