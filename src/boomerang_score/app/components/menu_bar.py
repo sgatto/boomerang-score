@@ -60,6 +60,12 @@ class MenuBar:
             label="Manage columns …",
             command=lambda: self.table_view.open_columns_dialog(self.root),
         )
+        self._grouped_headers_var = tk.BooleanVar(value=self.table_view.grouped_headers)
+        view_menu.add_checkbutton(
+            label="Grouped discipline headers",
+            variable=self._grouped_headers_var,
+            command=self.table_view.toggle_grouped_headers,
+        )
 
     def export_csv(self):
         """Export visible columns to CSV."""
