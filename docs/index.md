@@ -4,14 +4,16 @@ layout: home
 
 # Boomerang Score
 
-Professional scoring software for boomerang tournaments. Manage participants, compute rankings across 8 discipline events, and export tournament results to Word and PDF documents.
+Scoring software for boomerang tournaments. Manage participants, compute rankings across 8 discipline events, and export tournament results to Word and PDF documents.
 
 ## Features
 
 - **8 Discipline Events** — Accuracy (ACC), Australian Round (AUS), Maximum Time Aloft (MTA), Endurance (END), Fast Catch (FC), Trick Catch (TC), Timed Catch (TIMED), Tapir (TAPIR)
 - **Participant Management** — Add, edit, rank participants with multi-discipline scores
 - **Automated Ranking** — Compute competition standings across all events
-- **Export to Word & PDF** — Generate professional tournament reports
+- **Scoresheet Generation** — Generate tournament scoresheets by grouping the throwers by ranking or by startnumber
+- **Awards Generation** — Generate throwers' awards diplomas by printing to DOC or PDF using the Tournament Logo
+- **Export to Word & PDF** — Generate tournament reports
 - **Cross-Platform** — Runs on macOS, Linux, Windows with Python 3.10+
 - **Tkinter GUI** — Native desktop interface, no dependencies on external applications
 

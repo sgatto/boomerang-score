@@ -317,6 +317,10 @@ class ParticipantTableView:
 
     def on_tree_double_click(self, event):
         """Handle double-click for inline editing."""
+        # Commit any existing edit before starting a new one
+        if self._edit_entry:
+            self.commit_inline_edit()
+
         region = self.tree.identify("region", event.x, event.y)
         if region != "cell":
             return
