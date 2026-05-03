@@ -18,8 +18,9 @@ class CompetitionService:
         self.competition = competition
         self.disciplines = {d.code: d for d in disciplines}
 
-    def add_participant(self, name: str, startnumber: int,
-                       discipline_results: dict[str, float]) -> Participant:
+    def add_participant(
+        self, name: str, startnumber: int, discipline_results: dict[str, float]
+    ) -> Participant:
         """
         Add a new participant to the competition.
 
@@ -99,13 +100,17 @@ class CompetitionService:
 
         participant = self.competition.get_participant(old_startnumber)
         if not participant:
-            raise ValueError(f"Participant with startnumber {old_startnumber} not found")
+            raise ValueError(
+                f"Participant with startnumber {old_startnumber} not found"
+            )
 
         if self.competition.startnumber_exists(new_startnumber):
             raise ValueError(f"Startnumber {new_startnumber} is already assigned")
 
         # Create new participant with same data but new startnumber
-        new_participant = Participant(name=participant.name, startnumber=new_startnumber)
+        new_participant = Participant(
+            name=participant.name, startnumber=new_startnumber
+        )
         new_participant.disciplines = participant.disciplines
         new_participant.total_points = participant.total_points
         new_participant.overall_rank = participant.overall_rank
@@ -117,7 +122,9 @@ class CompetitionService:
         # Recalculate ranks (though they might not change, it's safer)
         self.recalculate_all_ranks()
 
-    def update_participant_result(self, startnumber: int, discipline_code: str, result: float):
+    def update_participant_result(
+        self, startnumber: int, discipline_code: str, result: float
+    ):
         """
         Update a participant's result for a discipline.
 

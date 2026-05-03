@@ -7,9 +7,10 @@ from typing import Optional
 @dataclass
 class DisciplineResult:
     """Result for a single discipline."""
+
     result: Optional[float] = None  # Raw result (e.g., time, distance)
     points: Optional[float] = None  # Calculated points
-    rank: Optional[int] = None      # Rank in this discipline
+    rank: Optional[int] = None  # Rank in this discipline
 
     def __post_init__(self):
         """Ensure numeric types."""
@@ -24,6 +25,7 @@ class DisciplineResult:
 @dataclass
 class Participant:
     """A participant in the competition."""
+
     name: str
     startnumber: int
     disciplines: dict[str, DisciplineResult] = field(default_factory=dict)
@@ -47,7 +49,9 @@ class Participant:
         """Set raw result for a discipline."""
         if discipline_code not in self.disciplines:
             self.disciplines[discipline_code] = DisciplineResult()
-        self.disciplines[discipline_code].result = float(result) if result is not None else None
+        self.disciplines[discipline_code].result = (
+            float(result) if result is not None else None
+        )
 
     def get_points(self, discipline_code: str) -> Optional[float]:
         """Get calculated points for a discipline."""
@@ -59,7 +63,9 @@ class Participant:
         """Set calculated points for a discipline."""
         if discipline_code not in self.disciplines:
             self.disciplines[discipline_code] = DisciplineResult()
-        self.disciplines[discipline_code].points = float(points) if points is not None else None
+        self.disciplines[discipline_code].points = (
+            float(points) if points is not None else None
+        )
 
     def get_rank(self, discipline_code: str) -> Optional[int]:
         """Get rank for a discipline."""
@@ -77,6 +83,7 @@ class Participant:
 @dataclass
 class Competition:
     """A competition with participants and active disciplines."""
+
     title: str = "My Competition"
     logo_path: Optional[str] = None
     participants: dict[int, Participant] = field(default_factory=dict)
@@ -85,7 +92,9 @@ class Competition:
     def add_participant(self, participant: Participant):
         """Add a participant to the competition (uses startnumber as ID)."""
         if participant.startnumber in self.participants:
-            raise ValueError(f"Participant with startnumber {participant.startnumber} already exists")
+            raise ValueError(
+                f"Participant with startnumber {participant.startnumber} already exists"
+            )
         self.participants[participant.startnumber] = participant
 
     def remove_participant(self, startnumber: int):

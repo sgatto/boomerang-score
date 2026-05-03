@@ -1,7 +1,7 @@
 """Menu bar component with export actions."""
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import messagebox, filedialog
 
 
 class MenuBar:
@@ -12,7 +12,9 @@ class MenuBar:
     (column management).
     """
 
-    def __init__(self, root, export_service, table_view, competition, file_callbacks=None):
+    def __init__(
+        self, root, export_service, table_view, competition, file_callbacks=None
+    ):
         """
         Initialize the menu bar.
 
@@ -37,23 +39,33 @@ class MenuBar:
         # File menu
         file_menu = tk.Menu(self.menubar, tearoff=False)
         self.menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="New",      command=self.file_callbacks.get("new",     lambda: None))
-        file_menu.add_command(label="Open…",    command=self.file_callbacks.get("open",    lambda: None))
+        file_menu.add_command(
+            label="New", command=self.file_callbacks.get("new", lambda: None)
+        )
+        file_menu.add_command(
+            label="Open…", command=self.file_callbacks.get("open", lambda: None)
+        )
         file_menu.add_separator()
-        file_menu.add_command(label="Save",     command=self.file_callbacks.get("save",    lambda: None))
-        file_menu.add_command(label="Save As…", command=self.file_callbacks.get("save_as", lambda: None))
+        file_menu.add_command(
+            label="Save", command=self.file_callbacks.get("save", lambda: None)
+        )
+        file_menu.add_command(
+            label="Save As…", command=self.file_callbacks.get("save_as", lambda: None)
+        )
 
         # View menu
         view_menu = tk.Menu(self.menubar, tearoff=False)
         self.menubar.add_cascade(label="View", menu=view_menu)
-        view_menu.add_command(label="Manage columns …",
-                            command=lambda: self.table_view.open_columns_dialog(self.root))
+        view_menu.add_command(
+            label="Manage columns …",
+            command=lambda: self.table_view.open_columns_dialog(self.root),
+        )
 
     def export_csv(self):
         """Export visible columns to CSV."""
         filename = filedialog.asksaveasfilename(
             defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
         )
         if not filename:
             return
@@ -62,10 +74,10 @@ class MenuBar:
             visible_cols = self.table_view.display_columns
             participant_order = list(self.table_view.tree.get_children())
             self.export_service.export_csv(
-                filename, 
-                visible_cols, 
+                filename,
+                visible_cols,
                 self.table_view.column_headers,
-                participant_order
+                participant_order,
             )
             messagebox.showinfo("Export CSV", f"Data exported to:\n{filename}")
         except Exception as e:
@@ -75,7 +87,7 @@ class MenuBar:
         """Export full list to PDF."""
         filename = filedialog.asksaveasfilename(
             defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
         )
         if not filename:
             return
@@ -91,15 +103,21 @@ class MenuBar:
         """Export individual participant reports."""
         filename = filedialog.asksaveasfilename(
             defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf"), ("DOCX files", "*.docx"), ("All files", "*.*")]
+            filetypes=[
+                ("PDF files", "*.pdf"),
+                ("DOCX files", "*.docx"),
+                ("All files", "*.*"),
+            ],
         )
         if not filename:
             return
 
         try:
             participant_order = list(self.table_view.tree.get_children())
-            logo_path = getattr(self.competition, 'logo_path', None)
-            self.export_service.export_individual_reports(filename, participant_order, logo_path)
+            logo_path = getattr(self.competition, "logo_path", None)
+            self.export_service.export_individual_reports(
+                filename, participant_order, logo_path
+            )
             messagebox.showinfo("Export", f"Individual reports created:\n{filename}")
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to create reports:\n{e}")

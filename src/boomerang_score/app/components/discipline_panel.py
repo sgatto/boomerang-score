@@ -36,7 +36,7 @@ class DisciplinePanel:
                 self.frame,
                 text=d.label,
                 variable=self.disc_state[d.code],
-                command=self._on_toggle
+                command=self._on_toggle,
             )
             cb.grid(row=0, column=idx, sticky="w", padx=(0, 12))
 

@@ -1,6 +1,5 @@
 """Input panel component for adding new participants."""
 
-import tkinter as tk
 from tkinter import ttk, messagebox
 
 
@@ -54,12 +53,16 @@ class InputPanel:
         frm_input.pack(fill="x")
 
         # Name field
-        ttk.Label(frm_input, text="Name:", font=self.fonts['bold']).grid(row=0, column=0, sticky="w")
+        ttk.Label(frm_input, text="Name:", font=self.fonts["bold"]).grid(
+            row=0, column=0, sticky="w"
+        )
         self.ent_name = ttk.Entry(frm_input, width=25)
         self.ent_name.grid(row=0, column=1, sticky="w", padx=(6, 12))
 
         # Start number field
-        ttk.Label(frm_input, text="Start No.:", font=self.fonts['bold']).grid(row=0, column=2, sticky="w")
+        ttk.Label(frm_input, text="Start No.:", font=self.fonts["bold"]).grid(
+            row=0, column=2, sticky="w"
+        )
         self.ent_startnr = ttk.Entry(frm_input, width=8)
         self.ent_startnr.grid(row=0, column=3, sticky="w", padx=(6, 12))
 
@@ -71,12 +74,26 @@ class InputPanel:
         # Add, Delete and Export buttons
         frm_buttons = ttk.Frame(frm_input)
         frm_buttons.grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
-        ttk.Button(frm_buttons, text="Add line", command=self.on_add).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_buttons, text="Delete line", command=self.on_delete).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_buttons, text="load CSV", command=self.on_load_csv).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_buttons, text="save CSV", command=self.on_save_csv).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_buttons, text="save PDF", command=self.on_save_pdf).pack(side="left", padx=(0, 12))
-        ttk.Button(frm_buttons, text="Overall awards (PDF/DOCX)", command=self.on_overall_awards).pack(side="left", padx=(0, 12))
+        ttk.Button(frm_buttons, text="Add line", command=self.on_add).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="Delete line", command=self.on_delete).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="load CSV", command=self.on_load_csv).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="save CSV", command=self.on_save_csv).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Button(frm_buttons, text="save PDF", command=self.on_save_pdf).pack(
+            side="left", padx=(0, 12)
+        )
+        ttk.Button(
+            frm_buttons,
+            text="Overall awards (PDF/DOCX)",
+            command=self.on_overall_awards,
+        ).pack(side="left", padx=(0, 12))
 
         # Configure column weights
         for c in range(4):
@@ -94,9 +111,9 @@ class InputPanel:
         for d in self.disciplines:
             if not self.disc_state[d.code].get():
                 continue
-            ttk.Label(self.frm_dyn_inputs, text=f"{d.label}:", font=self.fonts['bold']).grid(
-                row=0, column=col, sticky="w"
-            )
+            ttk.Label(
+                self.frm_dyn_inputs, text=f"{d.label}:", font=self.fonts["bold"]
+            ).grid(row=0, column=col, sticky="w")
             ent = ttk.Entry(self.frm_dyn_inputs, width=10)
             ent.grid(row=0, column=col + 1, sticky="w", padx=(6, 12))
             self.disc_entries[d.code] = ent
@@ -144,7 +161,9 @@ class InputPanel:
         try:
             startnr = self._parse_int(self.ent_startnr.get())
         except ValueError:
-            messagebox.showwarning("Invalid Start Number", "Start number must be an integer.")
+            messagebox.showwarning(
+                "Invalid Start Number", "Start number must be an integer."
+            )
             return
 
         if startnr is None:
@@ -161,8 +180,9 @@ class InputPanel:
                     v = self._parse_float(ent.get())
                     disc_values[d.code] = v if v is not None else 0.0
                 except ValueError:
-                    messagebox.showwarning("Invalid Input",
-                                         f"{d.label}: Result must be a number.")
+                    messagebox.showwarning(
+                        "Invalid Input", f"{d.label}: Result must be a number."
+                    )
                     return
 
         # Notify callback to add participant

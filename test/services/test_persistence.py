@@ -63,15 +63,25 @@ class TestLoadCsvFormatDetection(unittest.TestCase):
         os.unlink(self.tmp.name)
 
     def test_load_with_header_block(self):
-        self.svc.export_csv(self.tmp.name, ALL_COLUMNS, TABLE_COLUMN_HEADERS,
-                            list(self.comp.participants), include_header=True)
+        self.svc.export_csv(
+            self.tmp.name,
+            ALL_COLUMNS,
+            TABLE_COLUMN_HEADERS,
+            list(self.comp.participants),
+            include_header=True,
+        )
         data = self.svc.load_csv(self.tmp.name)
         self.assertEqual(data["title"], "Spring Open 2025")
         self.assertEqual(len(data["participants"]), 2)
 
     def test_load_without_header_block(self):
-        self.svc.export_csv(self.tmp.name, ALL_COLUMNS, TABLE_COLUMN_HEADERS,
-                            list(self.comp.participants), include_header=False)
+        self.svc.export_csv(
+            self.tmp.name,
+            ALL_COLUMNS,
+            TABLE_COLUMN_HEADERS,
+            list(self.comp.participants),
+            include_header=False,
+        )
         data = self.svc.load_csv(self.tmp.name)
         # No title row present → falls back to default
         self.assertEqual(data["title"], "My Competition")
@@ -102,8 +112,13 @@ class TestStartnumberRoundtrip(unittest.TestCase):
         os.unlink(self.tmp.name)
 
     def _load_participants(self, include_header):
-        self.svc.export_csv(self.tmp.name, ALL_COLUMNS, TABLE_COLUMN_HEADERS,
-                            list(self.comp.participants), include_header=include_header)
+        self.svc.export_csv(
+            self.tmp.name,
+            ALL_COLUMNS,
+            TABLE_COLUMN_HEADERS,
+            list(self.comp.participants),
+            include_header=include_header,
+        )
         data = self.svc.load_csv(self.tmp.name)
 
         # Simulate the key-normalisation the GUI does
@@ -114,7 +129,15 @@ class TestStartnumberRoundtrip(unittest.TestCase):
         for row in data["participants"]:
             norm = {_normalize(k): v for k, v in row.items()}
             startnr = None
-            for k in ["startnummer", "startnr", "start no.", "start no", "start", "startnr.", "startnumber"]:
+            for k in [
+                "startnummer",
+                "startnr",
+                "start no.",
+                "start no",
+                "start",
+                "startnr.",
+                "startnumber",
+            ]:
                 if k in norm and norm[k].strip():
                     try:
                         startnr = int(float(norm[k]))
@@ -149,8 +172,13 @@ class TestMissingDisciplineResults(unittest.TestCase):
         os.unlink(self.tmp.name)
 
     def test_missing_result_column_not_zero(self):
-        self.svc.export_csv(self.tmp.name, ALL_COLUMNS, TABLE_COLUMN_HEADERS,
-                            list(self.comp.participants), include_header=True)
+        self.svc.export_csv(
+            self.tmp.name,
+            ALL_COLUMNS,
+            TABLE_COLUMN_HEADERS,
+            list(self.comp.participants),
+            include_header=True,
+        )
         data = self.svc.load_csv(self.tmp.name)
 
         def _normalize(k):
@@ -164,12 +192,18 @@ class TestMissingDisciplineResults(unittest.TestCase):
 
         # Bob has no AUS result — the cell should be empty in the CSV
         aus_res_value = bob_row.get("aus res", "").strip()
-        self.assertEqual(aus_res_value, "",
-                         "Missing AUS result should be empty string, not '0'")
+        self.assertEqual(
+            aus_res_value, "", "Missing AUS result should be empty string, not '0'"
+        )
 
     def test_present_result_preserved(self):
-        self.svc.export_csv(self.tmp.name, ALL_COLUMNS, TABLE_COLUMN_HEADERS,
-                            list(self.comp.participants), include_header=True)
+        self.svc.export_csv(
+            self.tmp.name,
+            ALL_COLUMNS,
+            TABLE_COLUMN_HEADERS,
+            list(self.comp.participants),
+            include_header=True,
+        )
         data = self.svc.load_csv(self.tmp.name)
 
         def _normalize(k):
@@ -228,7 +262,9 @@ class TestCompetitionRepository(unittest.TestCase):
 
         bob = loaded.get_participant(7)
         self.assertIsNotNone(bob)
-        self.assertIsNone(bob.get_result("aus"), "Bob has no AUS result — should remain None")
+        self.assertIsNone(
+            bob.get_result("aus"), "Bob has no AUS result — should remain None"
+        )
         self.assertEqual(bob.get_result("acc"), 18.0)
 
     def test_empty_competition_roundtrip(self):
@@ -243,6 +279,7 @@ class TestCompetitionRepository(unittest.TestCase):
 
     def test_missing_optional_fields_tolerated(self):
         import json
+
         with open(self.tmp.name, "w", encoding="utf-8") as f:
             json.dump({"participants": {}}, f)
 

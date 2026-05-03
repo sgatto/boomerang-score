@@ -1,6 +1,6 @@
 """Table view component for displaying participants and their scores."""
 
-from typing import Optional, Callable, Any, Dict
+from typing import Callable, Any, Dict
 import tkinter as tk
 from tkinter import ttk, font as tkfont
 
@@ -13,8 +13,15 @@ class ParticipantTableView:
     and dynamic discipline columns (Result, Points, Rank per active discipline).
     """
 
-    def __init__(self, parent: tk.Widget, disciplines: list, disc_state: Dict[str, tk.BooleanVar],
-                 competition: Any, service: Any, fonts: Dict[str, tkfont.Font]) -> None:
+    def __init__(
+        self,
+        parent: tk.Widget,
+        disciplines: list,
+        disc_state: Dict[str, tk.BooleanVar],
+        competition: Any,
+        service: Any,
+        fonts: Dict[str, tkfont.Font],
+    ) -> None:
         """
         Initialize the participant table view.
 
@@ -115,7 +122,9 @@ class ParticipantTableView:
         for key in self.all_columns:
             new_visibility[key] = self.column_visibility.get(key, True)
         self.column_visibility = new_visibility
-        self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
+        self.display_columns = [
+            c for c in self.all_columns if self.column_visibility.get(c, True)
+        ]
 
         # Create tree widget
         self.tree = ttk.Treeview(
@@ -137,10 +146,17 @@ class ParticipantTableView:
 
         # Configure columns
         for col in self.all_columns:
-            self.tree.heading(col, text=self.column_headers[col],
-                            command=lambda c=col: self.on_sort_column(c))
-            self.tree.column(col, width=self.column_widths[col],
-                           anchor=self.column_anchors[col], stretch=False)
+            self.tree.heading(
+                col,
+                text=self.column_headers[col],
+                command=lambda c=col: self.on_sort_column(c),
+            )
+            self.tree.column(
+                col,
+                width=self.column_widths[col],
+                anchor=self.column_anchors[col],
+                stretch=False,
+            )
 
         # Bind inline editing events
         self.tree.bind("<Double-1>", self.on_tree_double_click)
@@ -159,14 +175,16 @@ class ParticipantTableView:
         """Notify that data has changed."""
         if self._on_data_changed:
             self._on_data_changed()
-            
+
     def refresh_from_data(self) -> None:
         """Refresh the whole table from current data."""
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         for startnr in self.competition.participants:
-            self.tree.insert("", "end", iid=str(startnr), values=[""] * len(self.all_columns))
+            self.tree.insert(
+                "", "end", iid=str(startnr), values=[""] * len(self.all_columns)
+            )
             self.update_row(str(startnr))
 
         self._notify_data_changed()
@@ -218,7 +236,9 @@ class ParticipantTableView:
 
         # Create context menu
         menu = tk.Menu(self.tree, tearoff=0)
-        menu.add_command(label="Delete line", command=lambda: self._on_delete_selected())
+        menu.add_command(
+            label="Delete line", command=lambda: self._on_delete_selected()
+        )
         menu.post(event.x_root, event.y_root)
 
     def _on_delete_selected(self):
@@ -231,7 +251,11 @@ class ParticipantTableView:
         startnr = int(iid)
 
         from tkinter import messagebox
-        if not messagebox.askyesno("Confirm Delete", f"Delete participant '{self.competition.participants[startnr].name}' (Start No. {startnr})?"):
+
+        if not messagebox.askyesno(
+            "Confirm Delete",
+            f"Delete participant '{self.competition.participants[startnr].name}' (Start No. {startnr})?",
+        ):
             return
 
         try:
@@ -258,8 +282,11 @@ class ParticipantTableView:
 
         vars_map = {}
         row = 0
-        ttk.Label(frm, text="Visible Columns (only currently available):",
-                 font=self.fonts['bold']).grid(row=row, column=0, sticky="w")
+        ttk.Label(
+            frm,
+            text="Visible Columns (only currently available):",
+            font=self.fonts["bold"],
+        ).grid(row=row, column=0, sticky="w")
         row += 1
         for col in self.all_columns:
             v = tk.BooleanVar(value=self.column_visibility.get(col, True))
@@ -270,12 +297,16 @@ class ParticipantTableView:
 
         btns = ttk.Frame(frm)
         btns.grid(row=row, column=0, pady=(8, 0), sticky="e")
-        ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=dlg.destroy).pack(
+            side="right", padx=(6, 0)
+        )
 
         def apply_and_close():
             for col, v in vars_map.items():
                 self.column_visibility[col] = bool(v.get())
-            self.display_columns = [c for c in self.all_columns if self.column_visibility.get(c, True)]
+            self.display_columns = [
+                c for c in self.all_columns if self.column_visibility.get(c, True)
+            ]
             try:
                 self.tree["displaycolumns"] = self.display_columns
             except Exception:
@@ -314,7 +345,7 @@ class ParticipantTableView:
         current_text = self.tree.item(rowid, "values")[col_index]
 
         # Create entry widget
-        self._edit_entry = ttk.Entry(self.tree, font=self.fonts['main'])
+        self._edit_entry = ttk.Entry(self.tree, font=self.fonts["main"])
         self._edit_entry.insert(0, current_text)
         self._edit_entry.select_range(0, "end")
         self._edit_entry.place(x=x, y=y, width=w, height=h)
@@ -350,9 +381,13 @@ class ParticipantTableView:
                 self.cancel_inline_edit()
                 return
             elif col_key.endswith("_res"):
-                disc_code = col_key.replace("_res", "")  # Already lowercase (e.g., "acc_res" -> "acc")
+                disc_code = col_key.replace(
+                    "_res", ""
+                )  # Already lowercase (e.g., "acc_res" -> "acc")
                 v = self._parse_float(new_value)
-                self.service.update_participant_result(startnr, disc_code, v if v is not None else 0.0)
+                self.service.update_participant_result(
+                    startnr, disc_code, v if v is not None else 0.0
+                )
 
             # Update all rows to refresh calculated values
             self.update_all_rows()
@@ -360,6 +395,7 @@ class ParticipantTableView:
 
         except ValueError as e:
             from tkinter import messagebox
+
             messagebox.showerror("Invalid Input", str(e))
 
         self.cancel_inline_edit()
@@ -379,6 +415,7 @@ class ParticipantTableView:
 
     def _apply_sort(self, col, ascending=True):
         """Apply sorting to the tree."""
+
         def get_val(startnr):
             p = self.competition.participants[startnr]
             if col == "name":
@@ -398,15 +435,17 @@ class ParticipantTableView:
             else:
                 v = None
             if v is None:
-                return (1, 0) if ascending else (0, float('inf'))
+                return (1, 0) if ascending else (0, float("inf"))
             if col in self.numeric_columns:
                 try:
                     return (0, float(v))
                 except (ValueError, TypeError):
-                    return (1, 0) if ascending else (0, float('inf'))
+                    return (1, 0) if ascending else (0, float("inf"))
             return (0, str(v))
 
-        items = [(startnr, get_val(startnr)) for startnr in self.competition.participants]
+        items = [
+            (startnr, get_val(startnr)) for startnr in self.competition.participants
+        ]
         items.sort(key=lambda x: x[1], reverse=not ascending)
 
         for index, (startnr, _) in enumerate(items):
