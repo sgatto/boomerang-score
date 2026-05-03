@@ -1,0 +1,20 @@
+title: Boomerang Score
+description: Scoring software for boomerang tournaments
+author: Andrea SGATTONI, Klaus Haebe
+theme: jekyll-theme-minimal
+url: https://sgatto.github.io/boomerang-score
+baseurl: /boomerang-score
+markdown: kramdown
+
+# Social
+social:
+  links:
+    - https://github.com/sgatto/boomerang-score
+
+# Navigation
+header_pages:
+  - getting-started.md
+  - architecture.md
+  - scoring-rules.md
+  - contributing.md
+  - api.md
