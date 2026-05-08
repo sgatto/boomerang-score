@@ -53,6 +53,9 @@ uv run pytest test/ \
   --cov=src/boomerang_score/services \
   --cov-fail-under=80
 
+# Run manual tests (e.g., PDF generation for visual check)
+uv run pytest --run-manual
+
 # Lint and format
 uv run ruff check src/ test/
 uv run ruff format src/ test/
@@ -135,6 +138,7 @@ def test_add_participant(competition):
 - **Core** (`src/boomerang_score/core/`) — **80%+ coverage required**
 - **Services** (`src/boomerang_score/services/`) — **80%+ coverage required**
 - **App** (`src/boomerang_score/app/`) — Tested via manual testing and `/gui-audit`
+- **Manual Tests** — Some tests (like visual PDF report verification) are marked as `@pytest.mark.manual` and are skipped by default.
 
 Run coverage check:
 
