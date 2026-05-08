@@ -3,6 +3,8 @@
 import csv
 from typing import Optional, Any
 
+from boomerang_score.core import constants
+
 
 def format_number(value) -> str:
     """Format a numeric value for display."""
@@ -385,14 +387,14 @@ class ExportService:
 
         event = event.upper()
 
-        if event == "ACC":
+        if event == constants.DISC_CODE_ACC:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
             )
             num_empty_cols = 10
             col_widths = [12 * mm, 40 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "AUS":
+        elif event == constants.DISC_CODE_AUS:
             main_headers = ["Startnr", "Name"]
             sub_headers = ["", ""]
             for i in range(1, 6):
@@ -403,25 +405,25 @@ class ExportService:
             num_empty_cols = 20
             col_widths = [12 * mm, 35 * mm] + [10 * mm] * 20 + [15 * mm]
             return [main_headers, sub_headers], num_empty_cols, col_widths
-        elif event == "END":
+        elif event == constants.DISC_CODE_END:
             distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
             headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
             num_empty_cols = 16
             col_widths = [12 * mm, 35 * mm] + [10 * mm] * 16 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "FC":
+        elif event == constants.DISC_CODE_FC:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
             col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "MTA":
+        elif event == constants.DISC_CODE_MTA:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
             col_widths = [12 * mm, 40 * mm] + [20 * mm] * 5 + [20 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "TC":
+        elif event == constants.DISC_CODE_TC:
             main_headers = (
                 ["Startnr", "Name"]
                 + [
@@ -510,14 +512,14 @@ class ExportService:
                 num_empty_cols,
                 col_widths,
             )
-        elif event == "TAPIR":
+        elif event == constants.DISC_CODE_TAPIR:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
             col_widths = [12 * mm, 40 * mm] + [15 * mm] * 5 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "TIMED":
+        elif event == constants.DISC_CODE_TIMED:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
             col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]

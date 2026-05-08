@@ -36,8 +36,6 @@ from tkinter import ttk, messagebox, filedialog
 
 # Constants
 BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
-EVENTS = ["ACC", "AUS", "MTA", "END", "FC", "TC", "TIMED", "TAPIR"]
-SORTED = ["StartNr", "Rank"]
 
 # Discipline Configuration
 DISCIPLINES = [
@@ -50,6 +48,8 @@ DISCIPLINES = [
     TIMED,
     TAPIR,
 ]
+EVENTS = [d.code for d in DISCIPLINES]
+SORTED = ["StartNr", "Rank"]
 
 
 class ScoreTableApp(tk.Tk):
