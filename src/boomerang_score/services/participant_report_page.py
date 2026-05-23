@@ -33,7 +33,7 @@ class ParticipantReportPage:
         except Exception:
             return None
 
-    def build_info_table(self, participant, label_style, text_style):
+    def build_info_table(self, participant, label_style, text_style, name_style, rank_style, points_style):
         """Build the participant info table (name, total points, overall rank)."""
         from reportlab.lib.units import mm
         from reportlab.platypus import Table, TableStyle, Paragraph
@@ -41,19 +41,16 @@ class ParticipantReportPage:
         info_tbl = Table(
             [
                 [
-                    Paragraph("Name:", label_style),
-                    Paragraph(participant.name, text_style),
+                    Paragraph(f"{format_number(participant.overall_rank)}.Place", rank_style),
                 ],
                 [
-                    Paragraph("Total Points:", label_style),
-                    Paragraph(format_number(participant.total_points), text_style),
+                    Paragraph(f"with {format_number(participant.total_points)} points", points_style),
                 ],
                 [
-                    Paragraph("Overall Rank:", label_style),
-                    Paragraph(format_number(participant.overall_rank), text_style),
+                    Paragraph(f"{participant.name}", name_style),
                 ],
             ],
-            colWidths=[40 * mm, None],
+
         )
         info_tbl.setStyle(
             TableStyle(
@@ -117,7 +114,7 @@ class ParticipantReportPage:
         )
         return disc_tbl
 
-    def build(self, participant, title_text, logo_path, title_style, h2_style, label_style, text_style):
+    def build(self, participant, title_text, logo_path, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style):
         """Return the list of story elements for this participant's page."""
         from reportlab.platypus import Paragraph, Spacer
 
@@ -135,7 +132,7 @@ class ParticipantReportPage:
             elements.append(logo)
         elements.append(Spacer(1, 20))
 
-        elements.append(self.build_info_table(participant, label_style, text_style))
+        elements.append(self.build_info_table(participant, label_style, text_style, name_style, rank_style, points_style))
         elements.append(Spacer(1, 30))
         elements.append(self.build_discipline_table(participant))
         return elements

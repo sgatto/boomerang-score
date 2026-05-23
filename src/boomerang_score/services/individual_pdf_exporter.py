@@ -23,31 +23,59 @@ class IndividualPdfExporter:
         title_style = ParagraphStyle(
             "CenteredTitle",
             parent=styles["Title"],
-            fontSize=20,
+            fontSize=25,
             spaceAfter=6,
             alignment=1,
         )
         h2_style = ParagraphStyle(
             "CenteredH2",
             parent=styles["Heading2"],
-            fontSize=14,
+            fontSize=20,
             spaceAfter=6,
             alignment=1,
         )
         label_style = ParagraphStyle(
             "Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11
         )
+        name_style = ParagraphStyle(
+            "Name",
+            parent=styles["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=20,
+            spaceBefore=6,
+            spaceAfter=6,
+            alignment=1,
+        )
+        rank_style = ParagraphStyle(
+            "Rank",
+            parent=styles["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=25,
+            spaceBefore=6,
+            spaceAfter=6,
+            alignment=1,
+        )
+        points_style = ParagraphStyle(
+            "Points",
+            parent=styles["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=11,
+            spaceBefore=6,
+            spaceAfter=6,
+            alignment=1,
+        )
+
         text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
-        return styles, title_style, h2_style, label_style, text_style
+        return styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style
 
     def build_participant_page(
-        self, participant, title_text, logo_path, title_style, h2_style, label_style, text_style
+        self, participant, title_text, logo_path, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style
     ):
         """Build the list of story elements for a single participant page."""
         page = ParticipantReportPage(self.competition, self.disciplines)
         return page.build(
             participant, title_text, logo_path,
-            title_style, h2_style, label_style, text_style,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style
         )
 
     def export(self, filename: str, participant_order: list[str], logo_path: Optional[str]):
@@ -56,7 +84,7 @@ class IndividualPdfExporter:
         from reportlab.lib.units import mm
         from reportlab.platypus import SimpleDocTemplate, PageBreak
 
-        _styles, title_style, h2_style, label_style, text_style = self.build_pdf_styles()
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = self.build_pdf_styles()
 
         doc = SimpleDocTemplate(
             filename,
@@ -82,7 +110,7 @@ class IndividualPdfExporter:
             story.extend(
                 self.build_participant_page(
                     participant, title_text, logo_path,
-                    title_style, h2_style, label_style, text_style,
+                    title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
                 )
             )
 
