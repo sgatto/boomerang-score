@@ -385,8 +385,6 @@ class ExportService:
         """Get columns configuration for a specific event scoresheet."""
         from reportlab.lib.units import mm
 
-        event = event.upper()
-
         if event == constants.DISC_CODE_ACC:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
