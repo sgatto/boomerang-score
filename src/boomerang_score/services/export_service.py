@@ -390,7 +390,7 @@ class ExportService:
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
             )
             num_empty_cols = 10
-            col_widths = [12 * mm, 40 * mm] + [12 * mm] * 10 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_AUS:
             main_headers = ["Startnr", "Name"]
@@ -401,25 +401,25 @@ class ExportService:
             main_headers.append("Result")
             sub_headers.append("")
             num_empty_cols = 20
-            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 20 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [10 * mm] * 20 + [15 * mm]
             return [main_headers, sub_headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_END:
             distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
             headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
             num_empty_cols = 16
-            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 16 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [10 * mm] * 16 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_FC:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
+            col_widths = [12 * mm, 50 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_MTA:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
-            col_widths = [12 * mm, 40 * mm] + [20 * mm] * 5 + [20 * mm]
+            col_widths = [12 * mm, 50 * mm] + [20 * mm] * 5 + [20 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_TC:
             main_headers = (
@@ -504,7 +504,7 @@ class ExportService:
                 + [""]
             )
             num_empty_cols = 21
-            col_widths = [12 * mm, 35 * mm] + [9 * mm] * 21 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [9 * mm] * 21 + [15 * mm]
             return (
                 [main_headers, sub_headers, points_headers],
                 num_empty_cols,
@@ -515,19 +515,19 @@ class ExportService:
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
-            col_widths = [12 * mm, 40 * mm] + [15 * mm] * 5 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [15 * mm] * 5 + [15 * mm]
             return [headers], num_empty_cols, col_widths
         elif event == constants.DISC_CODE_TIMED:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
+            col_widths = [12 * mm, 50 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
         else:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
             )
             num_empty_cols = 10
-            col_widths = [12 * mm, 30 * mm] + [12 * mm] * 10 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
 
     def _distribute_entries_to_circles(
@@ -630,7 +630,7 @@ class ExportService:
                         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                         ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
                         ("FONTNAME", (0, len(header_rows)), (-1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, len(header_rows)), (-1, -1), 7),
+                        ("FONTSIZE", (0, len(header_rows)), (-1, -1), 10),
                         ("ALIGN", (0, len(header_rows)), (0, -1), "CENTER"),
                         ("ALIGN", (1, len(header_rows)), (1, -1), "LEFT"),
                         ("ALIGN", (2, len(header_rows)), (-1, -1), "CENTER"),
