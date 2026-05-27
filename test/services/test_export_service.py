@@ -140,10 +140,10 @@ class TestIndividualPdfExporter(unittest.TestCase):
 
     def test_build_pdf_styles_returns_five_values(self):
         result = self.exporter.build_pdf_styles()
-        self.assertEqual(len(result), 5)
+        self.assertEqual(len(result), 8)
 
     def test_build_pdf_styles_font_names(self):
-        _styles, title_style, h2_style, label_style, text_style = (
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
             self.exporter.build_pdf_styles()
         )
         self.assertEqual(label_style.fontName, "Helvetica-Bold")
@@ -165,24 +165,24 @@ class TestIndividualPdfExporter(unittest.TestCase):
     def test_build_participant_info_table_structure(self):
         from reportlab.platypus import Table
 
-        _styles, _title, _h2, label_style, text_style = (
+        _styles, _title, _h2, label_style, text_style, name_style, rank_style, points_style = (
             self.exporter.build_pdf_styles()
         )
-        tbl = self.page.build_info_table(self.p1, label_style, text_style)
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
         self.assertIsInstance(tbl, Table)
         # Three rows: Name, Total Points, Overall Rank
         self.assertEqual(len(tbl._cellvalues), 3)
 
     def test_build_participant_info_table_values(self):
-        _styles, _title, _h2, label_style, text_style = (
+        _styles, _title, _h2, label_style, text_style, name_style, rank_style, points_style = (
             self.exporter.build_pdf_styles()
         )
-        tbl = self.page.build_info_table(self.p1, label_style, text_style)
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
         rows = tbl._cellvalues
-        # Each cell is a Paragraph; check the text content
-        self.assertIn("John Doe", rows[0][1].text)
-        self.assertIn("100", rows[1][1].text)
-        self.assertIn("1", rows[2][1].text)
+        # Row 0: rank, Row 1: points, Row 2: name (single-column layout)
+        self.assertIn("1", rows[0][0].text)
+        self.assertIn("100", rows[1][0].text)
+        self.assertIn("John Doe", rows[2][0].text)
 
     # --- build_discipline_table ---
 
@@ -220,12 +220,12 @@ class TestIndividualPdfExporter(unittest.TestCase):
 
     def test_build_participant_page_element_count(self):
         self.competition.active_disciplines = {"acc"}
-        _styles, title_style, h2_style, label_style, text_style = (
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
             self.exporter.build_pdf_styles()
         )
         elements = self.exporter.build_participant_page(
             self.p1, "Test Competition", None,
-            title_style, h2_style, label_style, text_style,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
         )
         # Title, Spacer, h2 paragraph, Spacer, Spacer(logo skipped),
         # info table, Spacer, discipline table = 8 elements
@@ -235,12 +235,12 @@ class TestIndividualPdfExporter(unittest.TestCase):
         from reportlab.platypus import Image
 
         self.competition.active_disciplines = {"acc"}
-        _styles, title_style, h2_style, label_style, text_style = (
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
             self.exporter.build_pdf_styles()
         )
         elements = self.exporter.build_participant_page(
             self.p1, "Test Competition", None,
-            title_style, h2_style, label_style, text_style,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
         )
         self.assertFalse(any(isinstance(e, Image) for e in elements))
 
@@ -268,8 +268,8 @@ class TestParticipantReportPage(unittest.TestCase):
     def _styles(self):
         from boomerang_score.services.individual_pdf_exporter import IndividualPdfExporter
         exporter = IndividualPdfExporter(self.competition, self.page.disciplines)
-        _, title_style, h2_style, label_style, text_style = exporter.build_pdf_styles()
-        return title_style, h2_style, label_style, text_style
+        _, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = exporter.build_pdf_styles()
+        return title_style, h2_style, label_style, text_style, name_style, rank_style, points_style
 
     # --- make_logo ---
 
@@ -283,18 +283,19 @@ class TestParticipantReportPage(unittest.TestCase):
 
     def test_build_info_table_structure(self):
         from reportlab.platypus import Table
-        _, _, label_style, text_style = self._styles()
-        tbl = self.page.build_info_table(self.p1, label_style, text_style)
+        _, _, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
         self.assertIsInstance(tbl, Table)
         self.assertEqual(len(tbl._cellvalues), 3)
 
     def test_build_info_table_values(self):
-        _, _, label_style, text_style = self._styles()
-        tbl = self.page.build_info_table(self.p1, label_style, text_style)
+        _, _, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
         rows = tbl._cellvalues
-        self.assertIn("John Doe", rows[0][1].text)
-        self.assertIn("100", rows[1][1].text)
-        self.assertIn("1", rows[2][1].text)
+        # Row 0: rank, Row 1: points, Row 2: name (single-column layout)
+        self.assertIn("1", rows[0][0].text)
+        self.assertIn("100", rows[1][0].text)
+        self.assertIn("John Doe", rows[2][0].text)
 
     # --- build_discipline_table ---
 
@@ -328,20 +329,20 @@ class TestParticipantReportPage(unittest.TestCase):
 
     def test_build_element_count(self):
         self.competition.active_disciplines = {"acc"}
-        title_style, h2_style, label_style, text_style = self._styles()
+        title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = self._styles()
         elements = self.page.build(
             self.p1, "Test Competition", None,
-            title_style, h2_style, label_style, text_style,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
         )
         self.assertEqual(len(elements), 8)
 
     def test_build_no_logo_when_path_is_none(self):
         from reportlab.platypus import Image
         self.competition.active_disciplines = {"acc"}
-        title_style, h2_style, label_style, text_style = self._styles()
+        title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = self._styles()
         elements = self.page.build(
             self.p1, "Test Competition", None,
-            title_style, h2_style, label_style, text_style,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
         )
         self.assertFalse(any(isinstance(e, Image) for e in elements))
 
