@@ -73,17 +73,17 @@ def _generate_sample_report_pdf(test_data_path: Path, logo_filename: str, output
     assert os.path.exists(output_filepath)
 
 
-#@pytest.mark.manual
+@pytest.mark.manual
 def test_generate_sample_report_pdf_for_manual_inspection_with_round_logo_6_events(test_data_path: Path):
     _generate_sample_report_pdf(test_data_path, "round_logo.png", "sample_participant_report.pdf")
 
 
-#@pytest.mark.manual
+@pytest.mark.manual
 def test_generate_sample_report_pdf_for_manual_inspection_with_vertical_logo_6_events(test_data_path: Path):
     _generate_sample_report_pdf(test_data_path, "vertical_logo.png", "sample_participant_report_vertical_logo.pdf")
 
 
-#@pytest.mark.manual
+@pytest.mark.manual
 def test_generate_sample_report_pdf_for_manual_inspection_with_horizontal_logo_6_events(test_data_path: Path):
     _generate_sample_report_pdf(test_data_path, "horizontal_logo.png", "sample_participant_report_horizontal_logo.pdf")
 

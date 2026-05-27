@@ -24,7 +24,7 @@ class ParticipantReportPage:
             return None
         try:
             img = Image(logo_path)
-            max_w, max_h = 160 * mm, 140 * mm
+            max_w, max_h = 160 * mm, 130 * mm
             iw, ih = img.imageWidth, img.imageHeight
             scale = min(max_w / iw, max_h / ih)
             img.drawWidth = iw * scale
@@ -124,7 +124,7 @@ class ParticipantReportPage:
         elements.append(
             Paragraph('<para alignment="center">Overall award</para>', h2_style)
         )
-        elements.append(Spacer(1, 6))
+        elements.append(Spacer(1, 12))
 
         logo = self.make_logo(logo_path)
         if logo:
