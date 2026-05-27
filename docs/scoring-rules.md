@@ -9,122 +9,134 @@ This page explains how Boomerang Score calculates points for each of the 8 disci
 
 ## Overview
 
-Each participant competes in up to 8 disciplines. Points are awarded based on performance in each event. Final rankings are computed by summing points across disciplines.
+Each participant competes in up to 8 disciplines. Points are awarded based on performance in each event using a **logarithmic scale**: small improvements at the low end of the scale yield more points than the same improvement at the high end. Final rankings are computed by summing points across active disciplines.
+
+The general formula used is:
+
+```
+points = 500 * log10(1 + 99 * (result / max_result))
+```
+
+This gives 0 points for a result of 0 and 1000 points for a perfect result, with diminishing returns near the top.
 
 ## The 8 Disciplines
 
 ### 1. Accuracy (ACC)
 
-**How it works:** Throw boomerang at targets; score is sum of distances (in cm) from center of each target.
+**How it works:** Throw boomerang at targets; score is a percentage (0–100) based on how close each throw lands to the center.
 
-**Scoring:**
-- Lower distance = better
-- Points awarded inversely: `points = 100 - (distance / max_distance) * 100`
+**Scoring:** Uses `_points_100` — logarithmic scale with max input 100.
+- 0 → 0 pts, 100 → 1000 pts
+- Negative input → −200 pts (penalty)
 
 ### 2. Australian Round (AUS)
 
-**How it works:** Throw to maximize distance while returning to thrower. Measured in meters.
+**How it works:** Throw to maximize distance while returning to thrower. Measured as a score out of 100.
 
-**Scoring:**
-- Higher distance = better
-- Points: `distance (m) * 10`
+**Scoring:** Uses `_points_100` — same logarithmic scale as ACC.
+- 0 → 0 pts, 100 → 1000 pts
 
 ### 3. Maximum Time Aloft (MTA)
 
-**How it works:** Single throw for maximum flight time. Measured in seconds.
+**How it works:** Single throw for maximum flight time. Scored as a value out of 50 seconds.
 
-**Scoring:**
-- Higher time = better
-- Points: `flight_time (s) * 10`
+**Scoring:** Uses `_points_50` — logarithmic scale with max input 50.
+- 0 → 0 pts, 50 → 1000 pts
+- Values above 50 are capped at 1000 pts
 
 ### 4. Endurance (END)
 
-**How it works:** Throw repeatedly, score number of catches before dropping or time limit.
+**How it works:** Throw repeatedly; score is number of catches. Scored as a value out of 80.
 
-**Scoring:**
-- Higher catches = better
-- Points: `num_catches * 5`
+**Scoring:** Uses `_points_80` — logarithmic scale with max input 80.
+- 0 → 0 pts, 80 → ~1000 pts (no upper cap)
 
 ### 5. Fast Catch (FC)
 
-**How it works:** Catch as many throws as possible within time limit (e.g., 60 seconds).
+**How it works:** Catch as many throws as possible within a time limit.
 
-**Scoring:**
-- Higher catches = better
-- Points: `num_catches * 3`
+**Scoring:** Uses a special lookup/formula (`_points_fc`):
+- 0 catches → 0 pts
+- 1 catch → 387.26 pts
+- 2 catches → 518.71 pts
+- 3 catches → 600.01 pts
+- 4 catches → 659.03 pts
+- 5+ catches → `500 * log10(1 + 99 * (15 / result))` (inverted: fewer catches = more time = better)
+- ≥75 catches → capped at 659.03 pts
 
 ### 6. Trick Catch (TC)
 
-**How it works:** Execute trick catches (behind back, one-handed, etc.). Scored by difficulty and count.
+**How it works:** Execute trick catches (behind back, one-handed, etc.). Scored as a percentage out of 100.
 
-**Scoring:**
-- Points awarded per trick level and count
-- Base: `difficulty_level * 2`, multiplied by count
+**Scoring:** Uses `_points_100` — same logarithmic scale as ACC.
+- 0 → 0 pts, 100 → 1000 pts
 
 ### 7. Timed Catch (TIMED)
 
-**How it works:** Catch boomerang within time window (e.g., 20 seconds).
+**How it works:** Catch boomerang within a time window. Scored as number of successful catches.
 
-**Scoring:**
-- Success = catches within window
-- Points: `num_successful_catches * 10`
+**Scoring:** Uses `_points_timed` — same lookup table as FC for 0–4 catches, then logarithmic for 5+.
+- 0 catches → 0 pts
+- 1–4 catches → fixed values (387.26 / 518.71 / 600.01 / 659.03)
+- 5+ catches → `500 * log10(1 + 99 * (15 / result))`
+- ≥75 catches → capped at 659.03 pts
 
 ### 8. Tapir (TAPIR)
 
-**How it works:** Specialized event. Usually distance + accuracy combined.
+**How it works:** Specialized combined event.
 
-**Scoring:**
-- Points: `(distance * 2) + (accuracy_bonus)`
+**Scoring:** Linear: `points = result * 3`
 
 ## Computing Competition Rankings
 
-1. **Per-discipline scoring** — Each participant receives points for their performance in that discipline.
+1. **Per-discipline scoring** — Each participant's raw result is passed through the discipline's `points_func` to get points.
 
-2. **Ranking within discipline** — Participants are ranked 1st, 2nd, 3rd, etc. by points. Ties are handled by awarding the same rank.
+2. **Ranking within discipline** — Participants are ranked 1st, 2nd, 3rd, etc. by points. Ties receive the same rank (standard competition ranking: 1, 1, 3, ...).
 
-3. **Aggregation** — Points from all disciplines are summed. Participant with highest total wins.
+3. **Aggregation** — Points from all **active** disciplines are summed into `total_points`.
 
-4. **Final rankings** — Displayed in descending order of total points.
+4. **Final rankings** — Participants ranked by `total_points` descending.
 
 ## Modifying Scoring Rules
 
 All scoring logic lives in `src/boomerang_score/core/scorer.py`. To change how a discipline is scored:
 
 1. Open `scorer.py`
-2. Find the scoring function for that discipline (e.g., `score_accuracy()`)
+2. Find or add the scoring function for that discipline (e.g., `_points_100()`)
 3. Modify the formula
 4. Add or update tests in `test/core/test_scoring.py`
 5. Run tests: `uv run pytest test/core/test_scoring.py -v`
 
-Example:
+Example — the accuracy scoring function:
 
 ```python
-def score_accuracy(distances, catches):
-    """Accuracy scoring: lower distance is better."""
-    total_distance = sum(distances)
-    max_possible = 1000.0
-    points = max(0, 100 - (total_distance / max_possible) * 100)
-    return DisciplineResult(points=points, raw_value=total_distance)
+def _points_100(result):
+    max_score_100 = 100
+    if result < 0:
+        points = -200
+    elif result < 100:
+        points = 500 * math.log10(1 + 99 * (float(result) / max_score_100))
+    else:
+        points = 1000
+    return points
 ```
 
 Changes take effect immediately in the GUI after reload.
 
 ## Points Distribution
 
-Typical points distribution (rough guide):
+Approximate points range per discipline:
 
-| Discipline | Min | Max | Notes |
+| Discipline | Formula     | Max Input | Max Points |
 |---|---|---|---|
-| ACC | 0 | 100 | Accuracy-based |
-| AUS | 0 | 150+ | Distance-based |
-| MTA | 0 | 200+ | Time-based |
-| END | 0 | 100+ | Count-based |
-| FC | 0 | 80+ | Count-based |
-| TC | 0 | 100+ | Trick-based |
-| TIMED | 0 | 100+ | Count-based |
-| TAPIR | 0 | 150+ | Combined |
-
-Maximum total: ~950 points (varies by event rules).
+| ACC        | log scale   | 100       | 1000       |
+| AUS        | log scale   | 100       | 1000       |
+| MTA        | log scale   | 50        | 1000       |
+| END        | log scale   | 80        | ~1000+     |
+| FC         | lookup+log  | —         | 659        |
+| TC         | log scale   | 100       | 1000       |
+| TIMED      | lookup+log  | —         | 659        |
+| TAPIR      | linear ×3   | —         | unbounded  |
 
 ## Handicapping
 

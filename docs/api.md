@@ -11,21 +11,28 @@ Core module documentation for programmers building on or extending Boomerang Sco
 
 ### `boomerang_score.core.models`
 
-Data classes representing tournament state. Immutable where possible.
+Data classes representing tournament state.
 
 #### `Competition`
 
 Tournament container.
 
 ```python
+@dataclass
 class Competition:
-    name: str
-    participants: list[Participant]
-    
-    def add_participant(p: Participant) -> None
-    def remove_participant(number: int) -> None
-    def get_participant(number: int) -> Participant | None
-    def get_all_scores(discipline_code: str) -> dict[int, float]
+    title: str = "My Competition"
+    logo_path: str | None = None
+    participants: dict[int, Participant]   # startnumber -> Participant
+    active_disciplines: set[str]
+
+    def add_participant(participant: Participant) -> None
+    def remove_participant(startnumber: int) -> None
+    def get_participant(startnumber: int) -> Participant | None
+    def set_active_disciplines(discipline_codes: set[str]) -> None
+    def is_discipline_active(discipline_code: str) -> bool
+    def get_all_participants() -> list[Participant]
+    def startnumber_exists(startnumber: int) -> bool
+    def next_free_startnumber() -> int
 ```
 
 #### `Participant`
@@ -33,13 +40,20 @@ class Competition:
 Person in the tournament.
 
 ```python
+@dataclass
 class Participant:
     name: str
-    number: int
-    results: dict[str, DisciplineResult]  # discipline_code -> result
-    
-    def get_score(discipline_code: str) -> float | None
-    def set_score(discipline_code: str, result: DisciplineResult) -> None
+    startnumber: int
+    disciplines: dict[str, DisciplineResult]  # discipline_code -> result
+    total_points: float | None
+    overall_rank: int | None
+
+    def get_result(discipline_code: str) -> float | None
+    def set_result(discipline_code: str, result: float | None) -> None
+    def get_points(discipline_code: str) -> float | None
+    def set_points(discipline_code: str, points: float | None) -> None
+    def get_rank(discipline_code: str) -> int | None
+    def set_rank(discipline_code: str, rank: int | None) -> None
 ```
 
 #### `DisciplineResult`
@@ -47,105 +61,49 @@ class Participant:
 Result for one discipline.
 
 ```python
+@dataclass
 class DisciplineResult:
-    points: float           # Computed points for ranking
-    raw_value: float | int  # Raw measurement (distance, time, count, etc.)
-    timestamp: datetime     # When score was recorded
+    result: float | None    # Raw measurement (distance, time, count, etc.)
+    points: float | None    # Computed points for ranking
+    rank: int | None        # Rank within this discipline
 ```
 
 ---
 
 ### `boomerang_score.core.scorer`
 
-Scoring functions. All pure functions with no side effects.
+Scoring logic. Disciplines are defined as `Discipline` objects with a `points_func`.
 
-#### `compute_competition_ranks(competition: Competition) -> dict[int, int]`
-
-Compute ranking (1st, 2nd, 3rd, etc.) for all participants based on total points across disciplines.
-
-**Returns:** `{ participant_number: rank }`
+#### `Discipline`
 
 ```python
-competition = Competition(name="Tournament")
-# ... add participants with scores ...
-ranks = compute_competition_ranks(competition)
-print(ranks[1])  # Rank of participant #1
+class Discipline:
+    code: str           # e.g. "acc"
+    label: str          # e.g. "ACC"
+    default_active: bool
+    points_func: Callable[[float], float]  # raw result -> points
 ```
 
-#### `score_accuracy(distances: list[float], catches: int) -> DisciplineResult`
+Pre-defined discipline instances (importable from `boomerang_score.core`):
 
-Accuracy (ACC) discipline: lower distance to center is better.
+```python
+from boomerang_score.core import ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
+```
 
-**Parameters:**
-- `distances`: List of distances (cm) from center for each throw
-- `catches`: Number of successful catches
+Each discipline's `points_func` uses a logarithmic scale so that improvements at the top of the scale are harder to achieve than at the bottom.
 
-**Returns:** `DisciplineResult` with points and raw distance sum
+#### `compute_competition_ranks(items: list[tuple]) -> dict`
 
-#### `score_australian_round(distance: float) -> DisciplineResult`
+Compute standard competition ranking (1, 1, 3, 4, 4, 6, ...) for a list of `(id, value)` pairs. Higher value = better rank.
 
-Australian Round (AUS): maximize distance while returning.
+**Returns:** `{ id: rank }`
 
-**Parameters:**
-- `distance`: Flight distance in meters
+```python
+from boomerang_score.core.scorer import compute_competition_ranks
 
-**Returns:** `DisciplineResult` with points
-
-#### `score_mta(flight_time: float) -> DisciplineResult`
-
-Maximum Time Aloft (MTA): maximize flight time.
-
-**Parameters:**
-- `flight_time`: Seconds in air
-
-**Returns:** `DisciplineResult` with points
-
-#### `score_endurance(catches: int) -> DisciplineResult`
-
-Endurance (END): maximum catches before drop.
-
-**Parameters:**
-- `catches`: Number of successful catches
-
-**Returns:** `DisciplineResult` with points
-
-#### `score_fast_catch(catches: int) -> DisciplineResult`
-
-Fast Catch (FC): catches within time limit.
-
-**Parameters:**
-- `catches`: Number of catches in window
-
-**Returns:** `DisciplineResult` with points
-
-#### `score_trick_catch(tricks: int, difficulty: int = 1) -> DisciplineResult`
-
-Trick Catch (TC): trick difficulty and count.
-
-**Parameters:**
-- `tricks`: Number of trick catches
-- `difficulty`: Average difficulty level (1-5)
-
-**Returns:** `DisciplineResult` with points
-
-#### `score_timed_catch(catches: int) -> DisciplineResult`
-
-Timed Catch (TIMED): catches within time window.
-
-**Parameters:**
-- `catches`: Number within window
-
-**Returns:** `DisciplineResult` with points
-
-#### `score_tapir(distance: float, accuracy_bonus: float = 0) -> DisciplineResult`
-
-Tapir (TAPIR): combined distance + accuracy.
-
-**Parameters:**
-- `distance`: Flight distance in meters
-- `accuracy_bonus`: Accuracy bonus points (0-100)
-
-**Returns:** `DisciplineResult` with points
+ranks = compute_competition_ranks([(1, 95.0), (2, 85.0), (3, 95.0)])
+# {1: 1, 3: 1, 2: 3}
+```
 
 ---
 
@@ -155,20 +113,19 @@ Discipline codes and metadata.
 
 ```python
 from boomerang_score.core.constants import (
-    DISC_CODE_ACC,      # "ACC"
-    DISC_CODE_AUS,      # "AUS"
-    DISC_CODE_MTA,      # "MTA"
-    DISC_CODE_END,      # "END"
-    DISC_CODE_FC,       # "FC"
-    DISC_CODE_TC,       # "TC"
-    DISC_CODE_TIMED,    # "TIMED"
-    DISC_CODE_TAPIR,    # "TAPIR"
-    ALL_DISCIPLINES,    # list of all 8 codes
+    DISC_CODE_ACC,      # "acc"
+    DISC_CODE_AUS,      # "aus"
+    DISC_CODE_MTA,      # "mta"
+    DISC_CODE_END,      # "end"
+    DISC_CODE_FC,       # "fc"
+    DISC_CODE_TC,       # "tc"
+    DISC_CODE_TIMED,    # "timed"
+    DISC_CODE_TAPIR,    # "tapir"
 )
 
 DISCIPLINE_LABELS = {
-    "ACC": "Accuracy",
-    "AUS": "Australian Round",
+    "acc": "ACC",
+    "aus": "AUS",
     # ...
 }
 ```
@@ -185,37 +142,45 @@ High-level tournament operations. Orchestrates core + persistence.
 
 ```python
 class CompetitionService:
-    def __init__(repository: CompetitionRepository)
-    
+    def __init__(competition: Competition, disciplines: list[Discipline])
+
     def add_participant(
         name: str,
-        number: int,
-        scores: dict[str, float] = None
+        startnumber: int,
+        discipline_results: dict[str, float] = {}
     ) -> Participant
-    
-    def remove_participant(number: int) -> None
-    
-    def update_score(
-        number: int,
+
+    def delete_participant(startnumber: int) -> None
+
+    def update_participant_name(startnumber: int, name: str) -> None
+
+    def update_participant_result(
+        startnumber: int,
         discipline_code: str,
-        raw_value: float
-    ) -> Participant
-    
-    def get_competition() -> Competition
-    
-    def save_competition(filepath: str) -> None
-    
-    def load_competition(filepath: str) -> Competition
+        result: float
+    ) -> None
+
+    def change_startnumber(old_startnumber: int, new_startnumber: int) -> None
+
+    def set_active_disciplines(discipline_codes: set[str]) -> None
+
+    def recalculate_participant(startnumber: int) -> None
+
+    def recalculate_all_ranks() -> None
+
+    def clear_all_data() -> None
 ```
 
 **Example:**
 
 ```python
-from boomerang_score.services import CompetitionService, CompetitionRepository
+from boomerang_score.core import Competition, ACC, AUS
 from boomerang_score.core.constants import DISC_CODE_ACC, DISC_CODE_AUS
+from boomerang_score.services import CompetitionService
 
-repo = CompetitionRepository()
-service = CompetitionService(repo)
+comp = Competition(title="Spring Championship")
+service = CompetitionService(comp, [ACC, AUS])
+service.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS})
 
 # Add participant
 p = service.add_participant(
@@ -224,11 +189,12 @@ p = service.add_participant(
     {DISC_CODE_ACC: 80.5, DISC_CODE_AUS: 95.0}
 )
 
-# Update score
-service.update_score(1, DISC_CODE_ACC, 85.0)
+# Update a result
+service.update_participant_result(1, DISC_CODE_ACC, 85.0)
 
-# Save
-service.save_competition("tournament.json")
+# Access computed data
+print(comp.participants[1].total_points)
+print(comp.participants[1].overall_rank)
 ```
 
 ---
@@ -237,29 +203,24 @@ service.save_competition("tournament.json")
 
 Document generation.
 
-#### `export_to_pdf(competition: Competition, filepath: str) -> str`
-
-Generate PDF report of competition results.
-
-**Returns:** Path to created file
+#### `ExportService`
 
 ```python
-from boomerang_score.services import export_to_pdf
+class ExportService:
+    def __init__(competition: Competition, disciplines: list[Discipline])
 
-path = export_to_pdf(competition, "results.pdf")
-print(f"Exported to {path}")
+    def export_csv(filepath: str) -> str
+    def export_pdf_full_list(filepath: str) -> str
+    def export_individual_reports(output_dir: str) -> list[str]
 ```
 
-#### `export_to_word(competition: Competition, filepath: str) -> str`
-
-Generate Word (.docx) report.
-
-**Returns:** Path to created file
-
 ```python
-from boomerang_score.services import export_to_word
+from boomerang_score.core import Competition, ACC, AUS
+from boomerang_score.services import ExportService
 
-path = export_to_word(competition, "results.docx")
+export_service = ExportService(competition, [ACC, AUS])
+export_service.export_csv("results.csv")
+export_service.export_pdf_full_list("results.pdf")
 ```
 
 ---
@@ -274,7 +235,6 @@ Load/save competition state.
 class CompetitionRepository:
     def save(competition: Competition, filepath: str) -> None
     def load(filepath: str) -> Competition
-    def exists(filepath: str) -> bool
 ```
 
 **Example:**
@@ -295,28 +255,22 @@ loaded = repo.load("my_tournament.json")
 Want to compute rankings without the GUI? Here's how:
 
 ```python
-from boomerang_score.core.models import Competition, Participant, DisciplineResult
-from boomerang_score.core.scorer import compute_competition_ranks
-from boomerang_score.core.constants import DISC_CODE_ACC, DISC_CODE_AUS
+from boomerang_score.core import Competition, ACC, AUS, MTA
+from boomerang_score.core.constants import DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA
+from boomerang_score.services import CompetitionService
 
 # Create competition
-comp = Competition(name="My Tournament")
+comp = Competition(title="My Tournament")
+service = CompetitionService(comp, [ACC, AUS, MTA])
+service.set_active_disciplines({DISC_CODE_ACC, DISC_CODE_AUS, DISC_CODE_MTA})
 
 # Add participants
-p1 = Participant(name="Alice", number=1)
-p1.set_score(DISC_CODE_ACC, DisciplineResult(points=95.0, raw_value=50.0))
-p1.set_score(DISC_CODE_AUS, DisciplineResult(points=90.0, raw_value=120.0))
-comp.add_participant(p1)
+service.add_participant("Alice", 1, {DISC_CODE_ACC: 80.0, DISC_CODE_AUS: 95.0})
+service.add_participant("Bob", 2, {DISC_CODE_ACC: 60.0, DISC_CODE_AUS: 110.0})
 
-p2 = Participant(name="Bob", number=2)
-p2.set_score(DISC_CODE_ACC, DisciplineResult(points=85.0, raw_value=60.0))
-p2.set_score(DISC_CODE_AUS, DisciplineResult(points=100.0, raw_value=130.0))
-comp.add_participant(p2)
-
-# Compute rankings
-ranks = compute_competition_ranks(comp)
-print(f"Alice rank: {ranks[1]}")  # 1 (higher score)
-print(f"Bob rank: {ranks[2]}")    # 2
+# Rankings are computed automatically
+for startnr, p in comp.participants.items():
+    print(f"#{startnr} {p.name}: {p.total_points:.1f} pts, rank {p.overall_rank}")
 ```
 
 ---
