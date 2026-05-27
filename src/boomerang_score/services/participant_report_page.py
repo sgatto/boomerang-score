@@ -24,7 +24,7 @@ class ParticipantReportPage:
             return None
         try:
             img = Image(logo_path)
-            max_w, max_h = 160 * mm, 160 * mm
+            max_w, max_h = 160 * mm, 140 * mm
             iw, ih = img.imageWidth, img.imageHeight
             scale = min(max_w / iw, max_h / ih)
             img.drawWidth = iw * scale
