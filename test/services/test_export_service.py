@@ -3,6 +3,8 @@ import unittest
 import csv
 from boomerang_score.core.models import Competition, Participant
 from boomerang_score.services.export_service import ExportService
+from boomerang_score.services.individual_pdf_exporter import IndividualPdfExporter
+from boomerang_score.services.participant_report_page import ParticipantReportPage
 
 
 class TestExportService(unittest.TestCase):
@@ -107,6 +109,242 @@ class TestExportService(unittest.TestCase):
         finally:
             if os.path.exists(test_pdf):
                 os.remove(test_pdf)
+
+    def test_export_individual_reports_invalid_extension(self):
+        with self.assertRaises(ValueError):
+            self.export_service.export_individual_reports("output.txt")
+
+
+class TestIndividualPdfExporter(unittest.TestCase):
+    def setUp(self):
+        self.competition = Competition(title="Test Competition")
+        self.p1 = Participant(name="John Doe", startnumber=1)
+        self.p1.total_points = 100.0
+        self.p1.overall_rank = 1
+        self.p1.set_result("acc", 15.0)
+        self.p1.set_points("acc", 50.0)
+        self.p1.set_rank("acc", 1)
+        self.competition.add_participant(self.p1)
+
+        class MockDisc:
+            def __init__(self, code, label):
+                self.code = code
+                self.label = label
+
+        disciplines = [MockDisc("acc", "Accuracy")]
+        disciplines_dict = {d.code: d for d in disciplines}
+        self.exporter = IndividualPdfExporter(self.competition, disciplines_dict)
+        self.page = ParticipantReportPage(self.competition, disciplines_dict)
+
+    # --- build_pdf_styles ---
+
+    def test_build_pdf_styles_returns_five_values(self):
+        result = self.exporter.build_pdf_styles()
+        self.assertEqual(len(result), 8)
+
+    def test_build_pdf_styles_font_names(self):
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
+            self.exporter.build_pdf_styles()
+        )
+        self.assertEqual(label_style.fontName, "Helvetica-Bold")
+        self.assertEqual(label_style.fontSize, 11)
+        self.assertEqual(text_style.fontSize, 11)
+        self.assertEqual(title_style.alignment, 1)  # CENTER
+        self.assertEqual(h2_style.alignment, 1)
+
+    # --- make_logo ---
+
+    def test_make_logo_none_when_no_path(self):
+        self.assertIsNone(self.page.make_logo(None))
+
+    def test_make_logo_none_when_invalid_path(self):
+        self.assertIsNone(self.page.make_logo("/nonexistent/logo.png"))
+
+    # --- build_participant_info_table ---
+
+    def test_build_participant_info_table_structure(self):
+        from reportlab.platypus import Table
+
+        _styles, _title, _h2, label_style, text_style, name_style, rank_style, points_style = (
+            self.exporter.build_pdf_styles()
+        )
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
+        self.assertIsInstance(tbl, Table)
+        # Three rows: Name, Total Points, Overall Rank
+        self.assertEqual(len(tbl._cellvalues), 3)
+
+    def test_build_participant_info_table_values(self):
+        _styles, _title, _h2, label_style, text_style, name_style, rank_style, points_style = (
+            self.exporter.build_pdf_styles()
+        )
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
+        rows = tbl._cellvalues
+        # Row 0: rank, Row 1: points, Row 2: name (single-column layout)
+        self.assertIn("1", rows[0][0].text)
+        self.assertIn("100", rows[1][0].text)
+        self.assertIn("John Doe", rows[2][0].text)
+
+    # --- build_discipline_table ---
+
+    def test_build_discipline_table_structure(self):
+        from reportlab.platypus import Table
+
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        self.assertIsInstance(tbl, Table)
+        # Header row + 1 discipline row
+        self.assertEqual(len(tbl._cellvalues), 2)
+
+    def test_build_discipline_table_header_row(self):
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        header = tbl._cellvalues[0]
+        self.assertEqual(header, ["Discipline", "Result", "Points", "Rank"])
+
+    def test_build_discipline_table_data_row(self):
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        row = tbl._cellvalues[1]
+        self.assertEqual(row[0], "Accuracy")
+        self.assertEqual(row[1], "15")
+        self.assertEqual(row[2], "50")
+        self.assertEqual(row[3], "1")
+
+    def test_build_discipline_table_skips_inactive_disciplines(self):
+        self.competition.active_disciplines = set()
+        tbl = self.page.build_discipline_table(self.p1)
+        # Only the header row, no data rows
+        self.assertEqual(len(tbl._cellvalues), 1)
+
+    # --- build_participant_page ---
+
+    def test_build_participant_page_element_count(self):
+        self.competition.active_disciplines = {"acc"}
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
+            self.exporter.build_pdf_styles()
+        )
+        elements = self.exporter.build_participant_page(
+            self.p1, "Test Competition", None,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
+        )
+        # Title, Spacer, h2 paragraph, Spacer, Spacer(logo skipped),
+        # info table, Spacer, discipline table = 8 elements
+        self.assertEqual(len(elements), 8)
+
+    def test_build_participant_page_no_logo_when_path_is_none(self):
+        from reportlab.platypus import Image
+
+        self.competition.active_disciplines = {"acc"}
+        _styles, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = (
+            self.exporter.build_pdf_styles()
+        )
+        elements = self.exporter.build_participant_page(
+            self.p1, "Test Competition", None,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
+        )
+        self.assertFalse(any(isinstance(e, Image) for e in elements))
+
+
+class TestParticipantReportPage(unittest.TestCase):
+    def setUp(self):
+        self.competition = Competition(title="Test Competition")
+        self.p1 = Participant(name="John Doe", startnumber=1)
+        self.p1.total_points = 100.0
+        self.p1.overall_rank = 1
+        self.p1.set_result("acc", 15.0)
+        self.p1.set_points("acc", 50.0)
+        self.p1.set_rank("acc", 1)
+        self.competition.add_participant(self.p1)
+
+        class MockDisc:
+            def __init__(self, code, label):
+                self.code = code
+                self.label = label
+
+        disciplines = [MockDisc("acc", "Accuracy")]
+        disciplines_dict = {d.code: d for d in disciplines}
+        self.page = ParticipantReportPage(self.competition, disciplines_dict)
+
+    def _styles(self):
+        from boomerang_score.services.individual_pdf_exporter import IndividualPdfExporter
+        exporter = IndividualPdfExporter(self.competition, self.page.disciplines)
+        _, title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = exporter.build_pdf_styles()
+        return title_style, h2_style, label_style, text_style, name_style, rank_style, points_style
+
+    # --- make_logo ---
+
+    def test_make_logo_none_when_no_path(self):
+        self.assertIsNone(self.page.make_logo(None))
+
+    def test_make_logo_none_when_invalid_path(self):
+        self.assertIsNone(self.page.make_logo("/nonexistent/logo.png"))
+
+    # --- build_info_table ---
+
+    def test_build_info_table_structure(self):
+        from reportlab.platypus import Table
+        _, _, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
+        self.assertIsInstance(tbl, Table)
+        self.assertEqual(len(tbl._cellvalues), 3)
+
+    def test_build_info_table_values(self):
+        _, _, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        tbl = self.page.build_info_table(self.p1, label_style, text_style, name_style, rank_style, points_style)
+        rows = tbl._cellvalues
+        # Row 0: rank, Row 1: points, Row 2: name (single-column layout)
+        self.assertIn("1", rows[0][0].text)
+        self.assertIn("100", rows[1][0].text)
+        self.assertIn("John Doe", rows[2][0].text)
+
+    # --- build_discipline_table ---
+
+    def test_build_discipline_table_structure(self):
+        from reportlab.platypus import Table
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        self.assertIsInstance(tbl, Table)
+        self.assertEqual(len(tbl._cellvalues), 2)
+
+    def test_build_discipline_table_header_row(self):
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        self.assertEqual(tbl._cellvalues[0], ["Discipline", "Result", "Points", "Rank"])
+
+    def test_build_discipline_table_data_row(self):
+        self.competition.active_disciplines = {"acc"}
+        tbl = self.page.build_discipline_table(self.p1)
+        row = tbl._cellvalues[1]
+        self.assertEqual(row[0], "Accuracy")
+        self.assertEqual(row[1], "15")
+        self.assertEqual(row[2], "50")
+        self.assertEqual(row[3], "1")
+
+    def test_build_discipline_table_skips_inactive_disciplines(self):
+        self.competition.active_disciplines = set()
+        tbl = self.page.build_discipline_table(self.p1)
+        self.assertEqual(len(tbl._cellvalues), 1)
+
+    # --- build ---
+
+    def test_build_element_count(self):
+        self.competition.active_disciplines = {"acc"}
+        title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        elements = self.page.build(
+            self.p1, "Test Competition", None,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
+        )
+        self.assertEqual(len(elements), 8)
+
+    def test_build_no_logo_when_path_is_none(self):
+        from reportlab.platypus import Image
+        self.competition.active_disciplines = {"acc"}
+        title_style, h2_style, label_style, text_style, name_style, rank_style, points_style = self._styles()
+        elements = self.page.build(
+            self.p1, "Test Competition", None,
+            title_style, h2_style, label_style, text_style, name_style, rank_style, points_style,
+        )
+        self.assertFalse(any(isinstance(e, Image) for e in elements))
 
 
 if __name__ == "__main__":

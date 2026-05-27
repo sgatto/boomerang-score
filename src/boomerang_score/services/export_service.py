@@ -3,6 +3,8 @@
 import csv
 from typing import Optional, Any
 
+from boomerang_score.core import constants
+
 
 def format_number(value) -> str:
     """Format a numeric value for display."""
@@ -383,16 +385,14 @@ class ExportService:
         """Get columns configuration for a specific event scoresheet."""
         from reportlab.lib.units import mm
 
-        event = event.upper()
-
-        if event == "ACC":
+        if event == constants.DISC_CODE_ACC:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
             )
             num_empty_cols = 10
-            col_widths = [12 * mm, 40 * mm] + [12 * mm] * 10 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "AUS":
+        elif event == constants.DISC_CODE_AUS:
             main_headers = ["Startnr", "Name"]
             sub_headers = ["", ""]
             for i in range(1, 6):
@@ -401,27 +401,27 @@ class ExportService:
             main_headers.append("Result")
             sub_headers.append("")
             num_empty_cols = 20
-            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 20 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [10 * mm] * 20 + [15 * mm]
             return [main_headers, sub_headers], num_empty_cols, col_widths
-        elif event == "END":
+        elif event == constants.DISC_CODE_END:
             distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
             headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
             num_empty_cols = 16
-            col_widths = [12 * mm, 35 * mm] + [10 * mm] * 16 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [10 * mm] * 16 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "FC":
+        elif event == constants.DISC_CODE_FC:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
+            col_widths = [12 * mm, 50 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "MTA":
+        elif event == constants.DISC_CODE_MTA:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
-            col_widths = [12 * mm, 40 * mm] + [20 * mm] * 5 + [20 * mm]
+            col_widths = [12 * mm, 50 * mm] + [20 * mm] * 5 + [20 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "TC":
+        elif event == constants.DISC_CODE_TC:
             main_headers = (
                 ["Startnr", "Name"]
                 + [
@@ -504,30 +504,30 @@ class ExportService:
                 + [""]
             )
             num_empty_cols = 21
-            col_widths = [12 * mm, 35 * mm] + [9 * mm] * 21 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [9 * mm] * 21 + [15 * mm]
             return (
                 [main_headers, sub_headers, points_headers],
                 num_empty_cols,
                 col_widths,
             )
-        elif event == "TAPIR":
+        elif event == constants.DISC_CODE_TAPIR:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 6)] + ["Result"]
             )
             num_empty_cols = 5
-            col_widths = [12 * mm, 40 * mm] + [15 * mm] * 5 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [15 * mm] * 5 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == "TIMED":
+        elif event == constants.DISC_CODE_TIMED:
             headers = ["Startnr", "Name", "Round 1", "Round 2", "Result"]
             num_empty_cols = 2
-            col_widths = [12 * mm, 40 * mm] + [40 * mm] * 2 + [40 * mm]
+            col_widths = [12 * mm, 50 * mm] + [40 * mm] * 2 + [40 * mm]
             return [headers], num_empty_cols, col_widths
         else:
             headers = (
                 ["Startnr", "Name"] + [f"{i}. Throw" for i in range(1, 11)] + ["Result"]
             )
             num_empty_cols = 10
-            col_widths = [12 * mm, 30 * mm] + [12 * mm] * 10 + [15 * mm]
+            col_widths = [12 * mm, 50 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
 
     def _distribute_entries_to_circles(
@@ -630,7 +630,7 @@ class ExportService:
                         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                         ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
                         ("FONTNAME", (0, len(header_rows)), (-1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, len(header_rows)), (-1, -1), 7),
+                        ("FONTSIZE", (0, len(header_rows)), (-1, -1), 10),
                         ("ALIGN", (0, len(header_rows)), (0, -1), "CENTER"),
                         ("ALIGN", (1, len(header_rows)), (1, -1), "LEFT"),
                         ("ALIGN", (2, len(header_rows)), (-1, -1), "CENTER"),
@@ -722,205 +722,15 @@ class ExportService:
 
         doc.save(filename)
 
-    def _build_pdf_styles(self):
-        """Build and return the paragraph styles used in individual PDF reports."""
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            "ReportTitle",
-            parent=styles["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=20,
-            leading=24,
-            spaceAfter=6,
-        )
-        h2_style = ParagraphStyle(
-            "H2",
-            parent=styles["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=14,
-            spaceBefore=6,
-            spaceAfter=6,
-            alignment=1,
-        )
-        label_style = ParagraphStyle(
-            "Label", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11
-        )
-        text_style = ParagraphStyle("Text", parent=styles["Normal"], fontSize=11)
-        return styles, title_style, h2_style, label_style, text_style
-
-    def _make_logo(self, logo_path: Optional[str]):
-        """Load and scale a logo image for use in PDF reports."""
-        from reportlab.lib.units import mm
-        from reportlab.platypus import Image
-
-        if not logo_path:
-            return None
-        try:
-            img = Image(logo_path)
-            max_w, max_h = 160 * mm, 160 * mm
-            iw, ih = img.imageWidth, img.imageHeight
-            scale = min(max_w / iw, max_h / ih)
-            img.drawWidth = iw * scale
-            img.drawHeight = ih * scale
-            return img
-        except Exception:
-            return None
-
-    def _build_participant_info_table(self, participant, label_style, text_style):
-        """Build the participant info table (name, total points, overall rank)."""
-        from reportlab.lib.units import mm
-        from reportlab.platypus import Table, TableStyle, Paragraph
-
-        info_tbl = Table(
-            [
-                [
-                    Paragraph("Name:", label_style),
-                    Paragraph(participant.name, text_style),
-                ],
-                [
-                    Paragraph("Total Points:", label_style),
-                    Paragraph(format_number(participant.total_points), text_style),
-                ],
-                [
-                    Paragraph("Overall Rank:", label_style),
-                    Paragraph(format_number(participant.overall_rank), text_style),
-                ],
-            ],
-            colWidths=[40 * mm, None],
-        )
-        info_tbl.setStyle(
-            TableStyle(
-                [
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ]
-            )
-        )
-        info_tbl.hAlign = "CENTER"
-        return info_tbl
-
-    def _build_discipline_table(self, participant):
-        """Build the discipline results table for a participant."""
-        from reportlab.lib.units import mm
-        from reportlab.lib import colors
-        from reportlab.platypus import Table, TableStyle
-
-        tbl_headers = ["Discipline", "Result", "Points", "Rank"]
-        tbl_rows = [
-            [
-                self.disciplines[disc_code].label,
-                format_number(participant.get_result(disc_code)),
-                format_number(participant.get_points(disc_code)),
-                format_number(participant.get_rank(disc_code)),
-            ]
-            for disc_code in sorted(self.competition.active_disciplines)
-            if disc_code in self.disciplines
-        ]
-
-        disc_tbl = Table(
-            [tbl_headers] + tbl_rows,
-            colWidths=[28 * mm, 28 * mm, 28 * mm, 22 * mm],
-        )
-        disc_tbl.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 10),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 10),
-                    ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                    (
-                        "ROWBACKGROUNDS",
-                        (0, 1),
-                        (-1, -1),
-                        [colors.whitesmoke, colors.white],
-                    ),
-                ]
-            )
-        )
-        return disc_tbl
-
-    def _build_participant_page(
-        self, participant, title_text, logo_path, title_style, h2_style, label_style, text_style
-    ):
-        """Build the list of story elements for a single participant page."""
-        from reportlab.platypus import Paragraph, Spacer
-
-        elements = []
-        elements.append(Paragraph(title_text, title_style))
-        elements.append(Spacer(1, 6))
-        elements.append(
-            Paragraph('<para alignment="center">Overall award</para>', h2_style)
-        )
-        elements.append(Spacer(1, 6))
-
-        logo = self._make_logo(logo_path)
-        if logo:
-            logo.hAlign = "CENTER"
-            elements.append(logo)
-        elements.append(Spacer(1, 20))
-
-        elements.append(
-            self._build_participant_info_table(participant, label_style, text_style)
-        )
-        elements.append(Spacer(1, 30))
-        elements.append(self._build_discipline_table(participant))
-        return elements
-
     def _export_individual_pdf(
         self, filename: str, participant_order: list[str], logo_path: Optional[str]
     ):
         """Export individual reports to PDF."""
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, PageBreak
+        from boomerang_score.services.individual_pdf_exporter import IndividualPdfExporter
 
-        styles, title_style, h2_style, label_style, text_style = self._build_pdf_styles()
-
-        doc = SimpleDocTemplate(
-            filename,
-            pagesize=A4,
-            leftMargin=18 * mm,
-            rightMargin=18 * mm,
-            topMargin=16 * mm,
-            bottomMargin=16 * mm,
+        IndividualPdfExporter(self.competition, self.disciplines).export(
+            filename, participant_order, logo_path
         )
-
-        story = []
-        title_text = self.competition.title or "Competition"
-
-        for idx, participant_id in enumerate(participant_order):
-            try:
-                pid = int(participant_id)
-            except (ValueError, TypeError):
-                continue
-            participant = self.competition.get_participant(pid)
-            if not participant:
-                continue
-
-            story.extend(
-                self._build_participant_page(
-                    participant, title_text, logo_path,
-                    title_style, h2_style, label_style, text_style,
-                )
-            )
-
-            if idx < len(participant_order) - 1:
-                story.append(PageBreak())
-
-        doc.build(story)
 
     def _export_individual_docx(
         self, filename: str, participant_order: list[str], logo_path: Optional[str]
