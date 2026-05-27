@@ -9,15 +9,16 @@ src/boomerang_score/
 ├── core/
 │   ├── __init__.py
 │   ├── models.py              # Domain models (Participant, Competition, DisciplineResult)
+│   ├── constants.py           # Discipline code and label constants
 │   └── scorer.py              # Scoring and ranking logic
 ├── services/
 │   ├── __init__.py
 │   ├── competition_service.py # Business logic for managing competitions
-│   └── export_service.py      # Export functionality (CSV, PDF, DOCX)
+│   ├── export_service.py      # Export functionality (CSV, PDF, DOCX)
+│   └── persistence.py         # Save/load competitions to/from JSON
 ├── app/
 │   ├── __init__.py
-│   ├── rss_boomerang.py       # Main GUI application (refactored - 380 lines)
-│   ├── adapter.py             # Legacy data adapter for backward compatibility
+│   ├── rss_boomerang.py       # Main GUI application (~709 lines)
 │   └── components/            # GUI components
 │       ├── __init__.py
 │       ├── table_view.py      # TreeView with sorting and inline editing
@@ -27,10 +28,12 @@ src/boomerang_score/
 ├── cli.py                     # Command-line interface
 └── test/
     ├── core/
-    │   ├── test_models.py     # 30 tests for domain models
+    │   ├── test_models.py     # Tests for domain models
     │   └── test_scoring.py    # Scoring logic tests
     └── services/
-        └── test_competition_service.py  # 19 tests for business logic
+        ├── test_competition_service.py  # Tests for business logic
+        ├── test_export_service.py       # Tests for export functionality
+        └── test_persistence.py          # Tests for save/load
 ```
 
 ## What Changed
@@ -74,14 +77,30 @@ src/boomerang_score/
 - Easy to test with sample data
 - No GUI dependencies
 
+### 4. Persistence (`services/persistence.py`)
+
+**CompetitionRepository** provides:
+- `save(competition, path)`: Serialize Competition to JSON
+- `load(path)`: Deserialize Competition from JSON
+
+**Benefits:**
+- Users can save work and continue later
+- Share competition files between users
+- Backup and version control
+
+### 5. Constants (`core/constants.py`)
+
+Discipline codes and labels defined as named constants (e.g. `DISC_CODE_FC = "fc"`),
+used throughout the codebase to avoid magic strings.
+
 ## Completed Refactoring (Phase 1)
 
 ✅ **Domain Models** - Clean data structures with validation
 ✅ **Service Layer** - Business logic separated from GUI
 ✅ **Component Architecture** - GUI split into reusable components:
-   - Main app reduced from 877 to 380 lines (57% reduction)
+   - Main app reduced from 877 lines; grew back to ~709 with new features (persistence, file menu, exports)
    - TableView, InputPanel, DisciplinePanel, MenuBar components
-✅ **Unit Tests** - 47 tests covering models and services (all passing)
+✅ **Unit Tests** - 101 tests covering models, scoring, services, export, and persistence (all passing)
 ✅ **Type Hints** - Added to core models, services, and components
 ✅ **CLI Interface** - Command-line tool for programmatic access
 ✅ **Startnumber as ID** - Immutable startnumber replaces arbitrary IDs:
@@ -90,53 +109,24 @@ src/boomerang_score/
    - All methods use `startnumber: int` instead of `participant_id: str`
    - Removed `update_startnumber()` method (startnumber is immutable)
    - Cleaner, more intuitive API
+✅ **Persistence** - Save/Load competition to/from JSON (`CompetitionRepository`)
+✅ **File Menu** - New / Open / Save / Save As in GUI
+✅ **Remove Legacy Adapter** - `adapter.py` removed; GUI uses `competition.participants` directly
+✅ **Export Tests** - `test/services/test_export_service.py` added
+✅ **Persistence Tests** - `test/services/test_persistence.py` added
+✅ **Constants** - Discipline codes extracted to `core/constants.py`
 
 ## Next Steps (Phase 2)
 
-### 1. **Persistence & Data Management**
+### 1. **Recent Files**
 **Priority: HIGH**
 
-Currently, data only exists in memory during app runtime. Add persistence:
-
-- ✅ **Save/Load Competition**: Serialize Competition to JSON/pickle
-  - Add `CompetitionRepository` service
-  - Implement `save_to_file()` and `load_from_file()` methods
-  - Add "File" menu with New/Open/Save/Save As
-  - Auto-save on changes (optional)
-
-- [ ] **Recent Files**: Track and display recently opened competitions
-
-**Benefits:**
-- Users can save their work and continue later
-- Share competition files between users
-- Backup and version control
-
-**Files to create:**
-- `src/boomerang_score/services/persistence.py`
-- `test/services/test_persistence.py`
+- [ ] Track recently opened competition files
+- [ ] Display in File menu for quick access
 
 ---
 
-### 2. **Remove Legacy Adapter**
-**Priority: HIGH** (Now easier with startnumber as ID!)
-
-The `LegacyDataAdapter` was created for backward compatibility but adds complexity.
-Now that we use startnumber as ID, it's straightforward to remove:
-
-- [ ] **Update table_view.py** to use `competition.participants[startnr]` directly
-- [ ] **Update rss_boomerang.py** to pass competition instead of adapter
-- [ ] **Remove adapter.py** once all references updated
-- [ ] **Simplify code** - direct dict access is cleaner
-
-**Benefits:**
-- Cleaner codebase
-- Better performance (no adapter overhead)
-- More maintainable
-- One less abstraction layer
-
----
-
-### 3. **Enhanced CLI with Persistence**
+### 2. **Enhanced CLI with Persistence**
 **Priority: MEDIUM**
 
 Make CLI more useful by adding file operations:
@@ -164,7 +154,7 @@ boomerang-score export comp.json pdf results.pdf
 
 ---
 
-### 4. **GUI Improvements**
+### 3. **GUI Improvements**
 **Priority: MEDIUM**
 
 - [ ] **Undo/Redo**: Track changes and allow reverting
@@ -176,22 +166,20 @@ boomerang-score export comp.json pdf results.pdf
 
 ---
 
-### 5. **Testing Enhancements**
+### 4. **Testing Enhancements**
 **Priority: MEDIUM**
 
 - [ ] **GUI Tests**: Add tests for components using pytest-qt or similar
 - [ ] **Integration Tests**: Test full workflows (add participant → calculate → export)
-- [ ] **Export Tests**: Verify CSV/PDF/DOCX output correctness
-- [ ] **Coverage**: Aim for >80% code coverage
+- [ ] **Coverage**: Aim for >80% code coverage (GUI code currently untested)
 
 **Files to create:**
 - `test/app/test_components.py`
 - `test/integration/test_workflows.py`
-- `test/services/test_export_service.py`
 
 ---
 
-### 6. **Documentation**
+### 5. **Documentation**
 **Priority: LOW**
 
 - [ ] **User Guide**: How to use the application
@@ -202,7 +190,7 @@ boomerang-score export comp.json pdf results.pdf
 
 ---
 
-### 7. **Distribution & Packaging**
+### 6. **Distribution & Packaging**
 **Priority: LOW**
 
 - [ ] **Executable**: PyInstaller/cx_Freeze for standalone app
@@ -212,7 +200,7 @@ boomerang-score export comp.json pdf results.pdf
 
 ---
 
-### 8. **Advanced Features**
+### 7. **Advanced Features**
 **Priority: LOW**
 
 - [ ] **Multi-Language Support**: i18n/l10n for different languages
@@ -226,19 +214,18 @@ boomerang-score export comp.json pdf results.pdf
 
 ## Recommended Implementation Order
 
-1. **Persistence** (Week 1) - Most critical for users to save work
-2. **Remove Adapter** (Week 1) - Simplify codebase while fresh in mind
-3. **Enhanced CLI** (Week 2) - Make CLI production-ready
-4. **GUI Improvements** (Week 2-3) - Polish user experience
-5. **Testing** (Week 3) - Ensure quality and prevent regressions
-6. **Documentation** (Week 4) - Help users and contributors
-7. **Distribution** (Week 4) - Make app easy to install
-8. **Advanced Features** (Future) - Based on user feedback
+1. **Recent Files** (quick win) - Most requested UX improvement
+2. **Enhanced CLI** - Make CLI production-ready with file operations
+3. **GUI Improvements** - Polish user experience
+4. **Testing** - Ensure quality and prevent regressions
+5. **Documentation** - Help users and contributors
+6. **Distribution** - Make app easy to install
+7. **Advanced Features** (Future) - Based on user feedback
 
 ## Usage Example
 
 ```python
-from boomerang_score.core import Competition, Participant, ACC, AUS, MTA
+from boomerang_score.core import Competition, ACC, AUS, MTA
 from boomerang_score.services import CompetitionService
 
 # Create competition
@@ -248,38 +235,21 @@ comp.set_active_disciplines({"acc", "aus", "mta"})
 # Create service
 service = CompetitionService(comp, [ACC, AUS, MTA])
 
-# Add participant
+# Add participant (startnumber is the unique ID)
 service.add_participant(
-    participant_id="p1",
     name="John Doe",
     startnumber=1,
     discipline_results={"acc": 45.2, "aus": 88.5, "mta": 25.0}
 )
 
 # Results are automatically calculated
-participant = comp.get_participant("p1")
+participant = comp.participants[1]
 print(f"Total: {participant.total_points}")
 print(f"ACC Points: {participant.get_points('acc')}")
 print(f"Overall Rank: {participant.overall_rank}")
 ```
 
 ## Testing
-
-The refactored code is now testable:
-
-```python
-# test/core/test_models.py
-def test_participant_validation():
-    with pytest.raises(ValueError):
-        Participant(name="", startnumber=1)  # Empty name
-
-# test/services/test_competition_service.py
-def test_add_participant():
-    comp = Competition()
-    service = CompetitionService(comp, [ACC])
-    service.add_participant("p1", "John", 1, {"acc": 50.0})
-    assert len(comp.participants) == 1
-```
 
 Run tests with:
 ```bash
@@ -289,9 +259,9 @@ PYTHONPATH=src python -m pytest test/ -v
 ## Refactoring Metrics
 
 ### Code Organization
-- **Main app**: 877 lines → 380 lines (57% reduction)
-- **New components**: 655 lines across 4 focused modules
-- **Test coverage**: 50 tests (30 models + 19 services + 1 scoring)
+- **Main app**: 877 lines → ~709 lines (note: grew back from post-refactor 380 due to persistence, file menu, and export features)
+- **New components**: ~655 lines across 4 focused modules
+- **Test coverage**: 101 tests (models + scoring + competition service + export service + persistence)
 - **All tests**: ✅ PASSING
 
 ### Architecture Improvements
@@ -306,3 +276,5 @@ PYTHONPATH=src python -m pytest test/ -v
 - ✅ Programmatic API for scripting
 - ✅ Component-based GUI architecture
 - ✅ Comprehensive test suite
+- ✅ Save/Load competition files (JSON)
+- ✅ File menu (New / Open / Save / Save As)
