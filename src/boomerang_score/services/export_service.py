@@ -293,7 +293,7 @@ class ExportService:
                     ("FONTSIZE", (0, 0), (-1, 0), 5),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
                     ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 6),
+                    ("FONTSIZE", (0, 1), (-1, -1), 8),
                     ("ALIGN", (1, 1), (-1, -1), "CENTER"),
                     ("ALIGN", (0, 1), (0, -1), "LEFT"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -392,7 +392,7 @@ class ExportService:
             num_empty_cols = 10
             col_widths = [12 * mm, 50 * mm] + [12 * mm] * 10 + [15 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == constants.DISC_CODE_AUS:
+        elif (event == constants.DISC_CODE_AUS or event == constants.DISC_CODE_AUS40):
             main_headers = ["Startnr", "Name"]
             sub_headers = ["", ""]
             for i in range(1, 6):
@@ -403,7 +403,7 @@ class ExportService:
             num_empty_cols = 20
             col_widths = [12 * mm, 50 * mm] + [10 * mm] * 20 + [15 * mm]
             return [main_headers, sub_headers], num_empty_cols, col_widths
-        elif event == constants.DISC_CODE_END:
+        elif (event == constants.DISC_CODE_END or event == constants.DISC_CODE_END3):
             distances = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
             headers = ["Startnr", "Name"] + [str(d) for d in distances] + ["Result"]
             num_empty_cols = 16
@@ -421,7 +421,7 @@ class ExportService:
             num_empty_cols = 5
             col_widths = [12 * mm, 50 * mm] + [20 * mm] * 5 + [20 * mm]
             return [headers], num_empty_cols, col_widths
-        elif event == constants.DISC_CODE_TC:
+        elif (event == constants.DISC_CODE_TC or event == constants.DISC_CODE_TC50):
             main_headers = (
                 ["Startnr", "Name"]
                 + [

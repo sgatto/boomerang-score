@@ -18,7 +18,7 @@ if sys.platform.startswith("linux"):
         pass
     os.environ["LIBXCB_ALLOW_SLOPPY_LOCK"] = "1"
 
-from boomerang_score.core import Competition, ACC, AUS, MTA, END, FC, TC, TIMED, TAPIR
+from boomerang_score.core import Competition, ACC, AUS, AUS40, MTA, END, END3, FC, TC, TC50, TIMED, TAPIR
 from boomerang_score.services import (
     CompetitionService,
     ExportService,
@@ -41,10 +41,13 @@ BASE_COLUMNS = ["name", "startnumber", "total", "overall_rank"]
 DISCIPLINES = [
     ACC,
     AUS,
+    AUS40,
     MTA,
     END,
+    END3,
     FC,
     TC,
+    TC50,
     TIMED,
     TAPIR,
 ]

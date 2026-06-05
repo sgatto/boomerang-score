@@ -2,18 +2,24 @@ import math
 from .constants import (
     DISC_CODE_ACC,
     DISC_CODE_AUS,
+    DISC_CODE_AUS40,
     DISC_CODE_MTA,
     DISC_CODE_END,
+    DISC_CODE_END3,
     DISC_CODE_FC,
     DISC_CODE_TC,
+    DISC_CODE_TC50,
     DISC_CODE_TIMED,
     DISC_CODE_TAPIR,
     DISC_LABEL_ACC,
     DISC_LABEL_AUS,
+    DISC_LABEL_AUS40,
     DISC_LABEL_MTA,
     DISC_LABEL_END,
+    DISC_LABEL_END3,
     DISC_LABEL_FC,
     DISC_LABEL_TC,
+    DISC_LABEL_TC50,
     DISC_LABEL_TIMED,
     DISC_LABEL_TAPIR,
 )
@@ -69,7 +75,7 @@ def _points_100(result):
     max_score_100 = 100
     if result < 0:
         points = -200
-    elif result < 100:
+    elif result < max_score_100:
         points = 500 * math.log10(1 + 99 * (float(result) / max_score_100))
     else:
         points = 1000
@@ -85,7 +91,18 @@ def _points_80(result):
     return points
 
 
-def _points_50(result):
+def _points_80max(result):
+    max_score_80 = 80
+    if result < 0:
+        points = -200
+    elif result < max_score_80:
+        points = 500 * math.log10(1 + 99 * (float(result) / max_score_80))
+    else:
+        points = 1000
+    return points
+
+
+def _points_50max(result):
     max_score_50 = 50
     if result < 0:
         points = -200
@@ -93,6 +110,15 @@ def _points_50(result):
         points = 500 * math.log10(1 + 99 * (float(result) / max_score_50))
     else:
         points = 1000
+    return points
+
+
+def _points_50(result):
+    max_score_50 = 50
+    if result < 0:
+        points = -200
+    else :
+        points = 500 * math.log10(1 + 99 * (float(result) / max_score_50))
     return points
 
 
@@ -147,13 +173,16 @@ def _points_tapir(result):
 
 ACC = Discipline(DISC_CODE_ACC, DISC_LABEL_ACC, True, lambda e: _points_100(float(e)))
 AUS = Discipline(DISC_CODE_AUS, DISC_LABEL_AUS, True, lambda e: _points_100(float(e)))
-MTA = Discipline(DISC_CODE_MTA, DISC_LABEL_MTA, True, lambda e: _points_50(float(e)))
+AUS40 = Discipline(DISC_CODE_AUS40, DISC_LABEL_AUS40, False, lambda e: _points_80max(float(e)))
+MTA = Discipline(DISC_CODE_MTA, DISC_LABEL_MTA, True, lambda e: _points_50max(float(e)))
 END = Discipline(DISC_CODE_END, DISC_LABEL_END, True, lambda e: _points_80(float(e)))
+END3 = Discipline(DISC_CODE_END3, DISC_LABEL_END3, False, lambda e: _points_50(float(e)))
 FC = Discipline(DISC_CODE_FC, DISC_LABEL_FC, True, lambda e: _points_fc(float(e)))
 TC = Discipline(DISC_CODE_TC, DISC_LABEL_TC, True, lambda e: _points_100(float(e)))
+TC50 = Discipline(DISC_CODE_TC50, DISC_LABEL_TC50, False, lambda e: _points_50max(float(e)))
 TIMED = Discipline(
     DISC_CODE_TIMED, DISC_LABEL_TIMED, False, lambda e: _points_timed(float(e))
 )
 TAPIR = Discipline(
-    DISC_CODE_TAPIR, DISC_LABEL_TAPIR, True, lambda e: _points_tapir(float(e))
+    DISC_CODE_TAPIR, DISC_LABEL_TAPIR, False, lambda e: _points_tapir(float(e))
 )
