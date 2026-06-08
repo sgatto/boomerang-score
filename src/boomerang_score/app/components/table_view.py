@@ -73,11 +73,12 @@ class ParticipantTableView:
     def build(self) -> None:
         """Build or rebuild the tree widget with current active disciplines."""
         # Clear old widgets
-        if self._header_canvas:
-            self._header_canvas.destroy()
-            self._header_canvas = None
-        if self.tree:
-            self.tree.destroy()
+        for child in self.frame.winfo_children():
+            child.destroy()
+
+        self._header_canvas = None
+        self.tree = None
+        self._edit_entry = None
 
         # Assemble columns
         self.all_columns = []
