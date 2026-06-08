@@ -198,8 +198,8 @@ class InputPanel:
 
     def on_load_csv(self):
         """Handle load CSV button click."""
-        if self.on_load_csv_callback:
-            self.on_load_csv_callback()
+        #if self.on_load_csv_callback:
+        #    self.on_load_csv_callback()  ####function doesn't work correctly, therefore commented out for safety reasons
 
     def on_save_csv(self):
         """Handle save CSV button click."""
