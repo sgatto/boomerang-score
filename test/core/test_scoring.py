@@ -98,7 +98,6 @@ def test_points_50(score, expected):
     (4, 500 * math.log10(1 + 99 * (15.0 / 60.0 * (4.0 / 5.0)))), # non complete round
     (0, 0),
     (-1, -200),
-    )
 ])
 def test_points_fc(score, expected):
     # result 5 calculation: 1 + 99 * (15/5) = 1 + 99*3 = 298. 500 * log10(298) = 500 * 2.4742 = 1237.1
