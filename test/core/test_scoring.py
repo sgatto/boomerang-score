@@ -48,6 +48,7 @@ def test_safe_div():
     (-1, -200),
     (50, 500 * math.log10(1 + 99 * 0.5)),
     (150, 1000),
+    (-1, -200),
 ])
 def test_points_100(score, expected):
     assert _points_100(score) == pytest.approx(expected)
@@ -58,6 +59,7 @@ def test_points_100(score, expected):
     (40, 500 * math.log10(1 + 99 * 0.5)),
     (80, 1000),
     (160, 500 * math.log10(1 + 99 * 2)), # No cap for _points_80
+    (-1, -200),
 ])
 def test_points_80(score, expected):
     assert _points_80(score) == pytest.approx(expected)
@@ -74,6 +76,7 @@ def test_points_80max(score, expected):
     (50, 1000),
     (60, 1000), # Cap
     (25, 500 * math.log10(1 + 99 * 0.5)),
+    (-1, -200),
 ])
 def test_points_50max(score, expected):
     assert _points_50max(score) == pytest.approx(expected)
@@ -82,6 +85,7 @@ def test_points_50max(score, expected):
     (0, 0),
     (50, 1000),
     (100, 500 * math.log10(1 + 99 * 2)), # No cap
+    (-1, -200),
 ])
 def test_points_50(score, expected):
     assert _points_50(score) == pytest.approx(expected)
@@ -92,7 +96,9 @@ def test_points_50(score, expected):
     (5, 1234.98), # 15/5 = 3. 1 + 99*3 = 298. 500*log10(298) ~ 1237? Wait, calc again.
     (15, 1000), # 15/15 = 1. 1 + 99*1 = 100. 500*log10(100) = 500*2 = 1000. Correct.
     (4, 500 * math.log10(1 + 99 * (15.0 / 60.0 * (4.0 / 5.0)))), # non complete round
-    (0, -200),
+    (0, 0),
+    (-1, -200),
+    )
 ])
 def test_points_fc(score, expected):
     # result 5 calculation: 1 + 99 * (15/5) = 1 + 99*3 = 298. 500 * log10(298) = 500 * 2.4742 = 1237.1
