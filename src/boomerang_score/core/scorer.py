@@ -132,7 +132,7 @@ def _points_fc(result):
     elif result >= 5: 
         #complete round
         points = 500 * math.log10(1 + 99 * (_min_time / float(result)))
-    elif result > 0:
+    elif result >= 0:
          #non complete round, points scaled by laps completed
          #for non complete rounds the score is the number of the catches
          points = 500 * math.log10(1 + 99 * (_min_time / _max_time *(float(result) / _laps)))
